@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Shared library manifest - minimal permissions and configuration -->
+    
+    <!-- Internet permission for API calls -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Storage permissions for file attachments -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    
+    <!-- Camera permission for feedback attachments -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- Vibration for workout notifications -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    
+    <!-- Wake lock for active workout screen -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
+    <!-- Notification permissions (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
+</manifest>
