@@ -19,6 +19,8 @@ expect fun getPlatform(): Platform
  */
 expect fun logDebug(tag: String, message: String)
 
+expect fun logError(tag: String, message: String)
+
 /**
  * Test function per verificare il setup
  */
