@@ -1,4 +1,4 @@
-package com.fitgymtrack.app.enums
+package com.fitgymtrack.enums
 
 /**
  * Tipi di notifiche supportate dall'app

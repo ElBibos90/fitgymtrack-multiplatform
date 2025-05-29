@@ -1,9 +1,9 @@
 package com.fitgymtrack.api
 
-import com.fitgymtrack.app.models.ApiResponse
-import com.fitgymtrack.app.models.AppVersionResponse
-import com.fitgymtrack.app.models.MarkMessageReadRequest
-import com.fitgymtrack.app.models.UserMessagesResponse
+import com.fitgymtrack.models.ApiResponse
+import com.fitgymtrack.models.AppVersionResponse
+import com.fitgymtrack.models.MarkMessageReadRequest
+import com.fitgymtrack.models.UserMessagesResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET

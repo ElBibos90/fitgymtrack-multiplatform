@@ -1,7 +1,7 @@
 // Crea questo file: app/src/main/java/com/fitgymtrack/app/api/FeedbackApiService.kt
 package com.fitgymtrack.api
 
-import com.fitgymtrack.app.models.*
+import com.fitgymtrack.models.*
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.http.*

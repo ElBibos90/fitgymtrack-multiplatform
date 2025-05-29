@@ -1,6 +1,6 @@
 package com.fitgymtrack.api
 
-import com.fitgymtrack.app.models.*
+import com.fitgymtrack.models.*
 import retrofit2.http.*
 
 interface WorkoutApiService {

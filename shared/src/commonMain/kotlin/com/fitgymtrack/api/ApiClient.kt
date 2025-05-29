@@ -1,6 +1,6 @@
 package com.fitgymtrack.api
 
-import com.fitgymtrack.app.utils.SessionManager
+import com.fitgymtrack.utils.SessionManager
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonSyntaxException

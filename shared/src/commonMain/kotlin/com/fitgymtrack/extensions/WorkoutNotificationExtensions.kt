@@ -3,9 +3,9 @@ package com.fitgymtrack.extensions
 import com.fitgymtrack.platform.PlatformContext
 import com.fitgymtrack.platform.logDebug
 import com.fitgymtrack.platform.logError
-import com.fitgymtrack.app.models.WorkoutPlan
-import com.fitgymtrack.app.services.NotificationIntegrationService
-import com.fitgymtrack.app.utils.SubscriptionLimitChecker
+import com.fitgymtrack.models.WorkoutPlan
+import com.fitgymtrack.services.NotificationIntegrationService
+import com.fitgymtrack.utils.SubscriptionLimitChecker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

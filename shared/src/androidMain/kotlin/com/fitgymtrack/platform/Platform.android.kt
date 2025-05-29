@@ -22,3 +22,7 @@ actual fun getPlatform(): Platform = Platform()
 actual fun logDebug(tag: String, message: String) {
     Log.d(tag, message)
 }
+
+actual fun logError(tag: String, message: String) {
+    android.util.Log.e(tag, message)
+}

@@ -1,6 +1,6 @@
 package com.fitgymtrack.api
 
-import com.fitgymtrack.app.models.Exercise
+import com.fitgymtrack.models.Exercise
 import retrofit2.http.GET
 import retrofit2.http.Query
 

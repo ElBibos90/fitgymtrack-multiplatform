@@ -1,7 +1,7 @@
 package com.fitgymtrack.api
 
-import com.fitgymtrack.app.models.ApiResponse
-import com.fitgymtrack.app.models.ResourceLimits
+import com.fitgymtrack.models.ApiResponse
+import com.fitgymtrack.models.ResourceLimits
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
