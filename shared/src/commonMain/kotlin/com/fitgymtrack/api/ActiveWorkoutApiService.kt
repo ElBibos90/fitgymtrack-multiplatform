@@ -1,55 +1,74 @@
 package com.fitgymtrack.api
 
 import com.fitgymtrack.models.*
-import retrofit2.http.*
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 
 /**
- * Interfaccia per le API relative agli allenamenti attivi
+ * Service per le API relative agli allenamenti attivi
+ * Implementazione Ktor multiplatform
  */
-interface ActiveWorkoutApiService {
+class ActiveWorkoutApiService(
+    private val httpClient: HttpClient,
+    private val baseUrl: String = "https://fitgymtrack.com/api/"
+) {
     /**
      * Inizia un nuovo allenamento
      */
-    @POST("start_active_workout_standalone.php")
-    suspend fun startWorkout(
-        @Body request: StartWorkoutRequest
-    ): StartWorkoutResponse
+    suspend fun startWorkout(request: StartWorkoutRequest): StartWorkoutResponse {
+        return httpClient.post("${baseUrl}start_active_workout_standalone.php") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Recupera gli esercizi di una scheda specifica
      */
-    @GET("schede_standalone.php")
-    suspend fun getWorkoutExercises(
-        @Query("scheda_id") schedaId: Int
-    ): WorkoutExercisesResponse
+    suspend fun getWorkoutExercises(schedaId: Int): WorkoutExercisesResponse {
+        return httpClient.get("${baseUrl}schede_standalone.php") {
+            parameter("scheda_id", schedaId)
+        }.body()
+    }
 
     /**
      * Recupera le serie completate per un allenamento
      */
-    @GET("get_completed_series_standalone.php")
-    suspend fun getCompletedSeries(
-        @Query("allenamento_id") allenamentoId: Int
-    ): GetCompletedSeriesResponse
+    suspend fun getCompletedSeries(allenamentoId: Int): GetCompletedSeriesResponse {
+        return httpClient.get("${baseUrl}get_completed_series_standalone.php") {
+            parameter("allenamento_id", allenamentoId)
+        }.body()
+    }
 
     /**
      * Salva una serie completata
      */
-    @POST("save_completed_series.php")
-    suspend fun saveCompletedSeries(
-        @Body request: SaveCompletedSeriesRequest
-    ): SaveCompletedSeriesResponse
+    suspend fun saveCompletedSeries(request: SaveCompletedSeriesRequest): SaveCompletedSeriesResponse {
+        return httpClient.post("${baseUrl}save_completed_series.php") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Completa un allenamento
      */
-    @POST("complete_allenamento_standalone.php")
-    suspend fun completeWorkout(
-        @Body request: CompleteWorkoutRequest
-    ): CompleteWorkoutResponse
+    suspend fun completeWorkout(request: CompleteWorkoutRequest): CompleteWorkoutResponse {
+        return httpClient.post("${baseUrl}complete_allenamento_standalone.php") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Elimina un allenamento
      */
-    @POST("delete_allenamento_standalone.php")
-    suspend fun deleteWorkout(@Body request: Map<String, Int>): SeriesOperationResponse
+    suspend fun deleteWorkout(allenamentoId: Int): SeriesOperationResponse {
+        return httpClient.post("${baseUrl}delete_allenamento_standalone.php") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("allenamento_id" to allenamentoId))
+        }.body()
+    }
 }

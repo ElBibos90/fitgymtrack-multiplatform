@@ -1,55 +1,85 @@
-// Crea questo file: app/src/main/java/com/fitgymtrack/app/api/FeedbackApiService.kt
 package com.fitgymtrack.api
 
 import com.fitgymtrack.models.*
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import retrofit2.http.*
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.http.*
 
-interface FeedbackApiService {
+/**
+ * Service per l'API del feedback
+ * Implementazione Ktor multiplatform
+ */
+class FeedbackApiService(private val httpClient: HttpClient) {
 
     /**
      * Invia un feedback senza allegati
      */
-    @POST("feedback_api.php")
-    suspend fun submitFeedback(
-        @Body feedbackRequest: FeedbackRequest
-    ): FeedbackResponse
+    suspend fun submitFeedback(feedbackRequest: FeedbackRequest): FeedbackResponse {
+        return httpClient.post("feedback_api.php") {
+            setBody(feedbackRequest)
+        }.body()
+    }
 
     /**
      * Invia un feedback con allegati (multipart)
      */
-    @Multipart
-    @POST("feedback_api.php")
     suspend fun submitFeedbackWithAttachments(
-        @Part("type") type: RequestBody,
-        @Part("title") title: RequestBody,
-        @Part("description") description: RequestBody,
-        @Part("email") email: RequestBody,
-        @Part("severity") severity: RequestBody,
-        @Part("device_info") deviceInfo: RequestBody,
-        @Part attachments: List<MultipartBody.Part>
-    ): FeedbackResponse
+        type: String,
+        title: String,
+        description: String,
+        email: String,
+        severity: String,
+        deviceInfo: String,
+        attachments: List<ByteArray>
+    ): FeedbackResponse {
+        return httpClient.submitFormWithBinaryData(
+            url = "feedback_api.php",
+            formData = formData {
+                append("type", type)
+                append("title", title)
+                append("description", description)
+                append("email", email)
+                append("severity", severity)
+                append("device_info", deviceInfo)
+
+                attachments.forEachIndexed { index, attachment ->
+                    append(
+                        key = "attachments[]",
+                        value = attachment,
+                        headers = Headers.build {
+                            append(HttpHeaders.ContentType, "application/octet-stream")
+                            append(HttpHeaders.ContentDisposition, "filename=\"attachment_$index\"")
+                        }
+                    )
+                }
+            }
+        ).body()
+    }
 
     /**
      * Recupera tutti i feedback (solo per admin)
      */
-    @GET("feedback_api.php")
-    suspend fun getFeedbacks(): Map<String, Any>
+    suspend fun getFeedbacks(): Map<String, Any> {
+        return httpClient.get("feedback_api.php").body()
+    }
 
     /**
      * Aggiorna lo stato di un feedback (solo per admin)
      */
-    @POST("feedback_api.php")
-    suspend fun updateFeedbackStatus(
-        @Body request: Map<String, Any>
-    ): Map<String, Any>
+    suspend fun updateFeedbackStatus(request: Map<String, Any>): Map<String, Any> {
+        return httpClient.post("feedback_api.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Aggiorna le note admin di un feedback (solo per admin)
      */
-    @POST("feedback_api.php")
-    suspend fun updateFeedbackNotes(
-        @Body request: Map<String, Any>
-    ): Map<String, Any>
+    suspend fun updateFeedbackNotes(request: Map<String, Any>): Map<String, Any> {
+        return httpClient.post("feedback_api.php") {
+            setBody(request)
+        }.body()
+    }
 }

@@ -2,54 +2,60 @@ package com.fitgymtrack.api
 
 import com.fitgymtrack.models.ApiResponse
 import com.fitgymtrack.models.ResourceLimits
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Query
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
 
 /**
- * Interfaccia per le API relative agli abbonamenti
+ * Service per le API relative agli abbonamenti
+ * Implementazione Ktor multiplatform
  */
-interface SubscriptionApiService {
+class SubscriptionApiService(private val httpClient: HttpClient) {
+
     /**
      * Ottiene tutti i piani di abbonamento disponibili
      */
-    @GET("android_subscription_api.php")
-    suspend fun getAvailablePlans(
-        @Query("action") action: String = "get_plans"
-    ): ApiResponse<PlansResponse>
+    suspend fun getAvailablePlans(): ApiResponse<PlansResponse> {
+        return httpClient.get("android_subscription_api.php") {
+            parameter("action", "get_plans")
+        }.body()
+    }
 
     /**
      * Ottiene l'abbonamento attuale dell'utente
      */
-    @GET("android_subscription_api.php")
-    suspend fun getCurrentSubscription(
-        @Query("action") action: String = "current_subscription"
-    ): ApiResponse<SubscriptionResponse>
+    suspend fun getCurrentSubscription(): ApiResponse<SubscriptionResponse> {
+        return httpClient.get("android_subscription_api.php") {
+            parameter("action", "current_subscription")
+        }.body()
+    }
 
     /**
-     * NUOVO: Controlla e aggiorna le subscription scadute
+     * Controlla e aggiorna le subscription scadute
      */
-    @GET("android_subscription_api.php")
-    suspend fun checkExpiredSubscriptions(
-        @Query("action") action: String = "check_expired"
-    ): ApiResponse<ExpiredCheckResponse>
+    suspend fun checkExpiredSubscriptions(): ApiResponse<ExpiredCheckResponse> {
+        return httpClient.get("android_subscription_api.php") {
+            parameter("action", "check_expired")
+        }.body()
+    }
 
     /**
      * Verifica i limiti per un tipo di risorsa
      */
-    @GET("android_resource_limits_api.php")
-    suspend fun checkResourceLimits(
-        @Query("resource_type") resourceType: String
-    ): ApiResponse<ResourceLimits>
+    suspend fun checkResourceLimits(resourceType: String): ApiResponse<ResourceLimits> {
+        return httpClient.get("android_resource_limits_api.php") {
+            parameter("resource_type", resourceType)
+        }.body()
+    }
 
     /**
      * Aggiorna il piano di abbonamento
      */
-    @POST("android_update_plan_api.php")
-    suspend fun updatePlan(
-        @Body request: UpdatePlanRequest
-    ): ApiResponse<UpdatePlanResponse>
+    suspend fun updatePlan(request: UpdatePlanRequest): ApiResponse<UpdatePlanResponse> {
+        return httpClient.post("android_update_plan_api.php") {
+            setBody(request)
+        }.body()
+    }
 }
 
 /**
@@ -100,12 +106,12 @@ data class ApiSubscription(
     val no_ads: Int = 0,
     val start_date: String? = null,
     val end_date: String? = null,
-    val days_remaining: Int? = null, // NUOVO
-    val computed_status: String? = null // NUOVO
+    val days_remaining: Int? = null,
+    val computed_status: String? = null
 )
 
 /**
- * NUOVO: Modello per la risposta del controllo scadenze
+ * Modello per la risposta del controllo scadenze
  */
 data class ExpiredCheckResponse(
     val success: Boolean,

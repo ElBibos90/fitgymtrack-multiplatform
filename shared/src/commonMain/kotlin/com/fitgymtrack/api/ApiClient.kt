@@ -1,30 +1,34 @@
 package com.fitgymtrack.api
 
+import com.fitgymtrack.platform.logError
+import com.fitgymtrack.platform.logDebug
 import com.fitgymtrack.utils.SessionManager
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonSyntaxException
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.auth.*
+import io.ktor.client.plugins.auth.providers.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
-import okhttp3.Interceptor
-import okhttp3.OkHttpClient
-import okhttp3.ResponseBody
-import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Converter
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import java.lang.reflect.Type
-import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.seconds
 
+/**
+ * Client API centralizzato per tutte le chiamate di rete
+ * Implementazione Ktor multiplatform
+ */
 object ApiClient {
 
+    // Configuration constants
     //private const val BASE_URL = "http://192.168.1.113/api/" // Per emulatore che punta a localhost
-    // oppure
     private const val BASE_URL = "https://fitgymtrack.com/api/" // Per il server remoto
 
-    private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
-    }
+    private const val CONNECT_TIMEOUT = 30
+    private const val REQUEST_TIMEOUT = 30
 
     private lateinit var sessionManager: SessionManager
 
@@ -33,133 +37,155 @@ object ApiClient {
         this.sessionManager = sessionManager
     }
 
-    // Interceptor personalizzato per aggiungere token di autorizzazione
-    private val authInterceptor = Interceptor { chain ->
-        // Se sessionManager non è stato inizializzato, procedi senza autenticazione
-        if (!::sessionManager.isInitialized) {
-            return@Interceptor chain.proceed(chain.request())
-        }
-
-        // Ottieni token di autenticazione usando runBlocking
-        val token = runBlocking {
-            sessionManager.getAuthToken().first()
-        }
-
-        // Se il token è null o vuoto, procedi senza autenticazione
-        if (token.isNullOrEmpty()) {
-            return@Interceptor chain.proceed(chain.request())
-        }
-
-        // Crea una nuova request con l'header Authorization
-        val request = chain.request().newBuilder()
-            .addHeader("Authorization", "Bearer $token")
-            .build()
-
-        // Procedi con la request modificata
-        chain.proceed(request)
+    // Configurazione JSON
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        encodeDefaults = true
+        isLenient = true
     }
 
-    private val okHttpClient by lazy {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY  // Log completo di richieste e risposte
-        }
+    // HttpClient configurato
+    private val httpClient by lazy {
+        HttpClient {
+            // Serialization
+            install(ContentNegotiation) {
+                json(json)
+            }
 
-        OkHttpClient.Builder()
-            .addInterceptor(loggingInterceptor)
-            .addInterceptor(authInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .build()
-    }
+            // Logging
+            install(Logging) {
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        logDebug("HttpClient", message)
+                    }
+                }
+                level = LogLevel.BODY
+            }
 
-    // Converter Factory personalizzato per gestire meglio gli errori di parsing
-    class SafeConverterFactory(private val gson: Gson) : Converter.Factory() {
-        override fun responseBodyConverter(
-            type: Type,
-            annotations: Array<Annotation>,
-            retrofit: Retrofit
-        ): Converter<ResponseBody, *>? {
-            val delegate = GsonConverterFactory.create(gson).responseBodyConverter(type, annotations, retrofit)
-            return if (delegate != null) {
-                Converter<ResponseBody, Any> { body ->
-                    try {
-                        delegate.convert(body)
-                    } catch (e: JsonSyntaxException) {
-                        // Log dell'errore
-                        logError("ApiClient", "Errore parsing JSON: ${e.message}")
+            // Timeouts
+            install(HttpTimeout) {
+                connectTimeoutMillis = CONNECT_TIMEOUT.seconds.inWholeMilliseconds
+                requestTimeoutMillis = REQUEST_TIMEOUT.seconds.inWholeMilliseconds
+                socketTimeoutMillis = REQUEST_TIMEOUT.seconds.inWholeMilliseconds
+            }
 
-                        // In caso di errore, restituisce un valore di default in base al tipo
+            // Default request configuration
+            defaultRequest {
+                url(BASE_URL)
+                contentType(ContentType.Application.Json)
+            }
+
+            // Auth interceptor
+            install(Auth) {
+                bearer {
+                    loadTokens {
+                        // Se sessionManager non è inizializzato, nessun token
+                        if (!::sessionManager.isInitialized) {
+                            return@loadTokens null
+                        }
+
+                        try {
+                            val token = sessionManager.getAuthToken().first()
+                            if (!token.isNullOrEmpty()) {
+                                BearerTokens(token, "")
+                            } else {
+                                null
+                            }
+                        } catch (e: Exception) {
+                            logError("ApiClient", "Errore recupero token: ${e.message}")
+                            null
+                        }
+                    }
+
+                    refreshTokens {
+                        // TODO: Implementare refresh token logic se necessario
                         null
                     }
                 }
-            } else {
-                null
+            }
+
+            // Response validation & error handling
+            install(HttpCallValidator) {
+                handleResponseExceptionWithRequest { exception, request ->
+                    logError("ApiClient", "Errore HTTP: ${exception.message} per ${request.url}")
+                }
+
+                validateResponse { response ->
+                    // Custom response validation logic here if needed
+                }
             }
         }
     }
 
-    private val retrofit by lazy {
-        // Crea un Gson più permissivo
-        val gson = GsonBuilder()
-            .serializeNulls()
-            .create()
-
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .build()
+    // Factory functions per i servizi API
+    private inline fun <reified T> createService(): T where T : Any {
+        return when (T::class) {
+            ApiService::class -> ApiService(httpClient) as T
+            WorkoutApiService::class -> WorkoutApiService(httpClient) as T
+            ActiveWorkoutApiService::class -> ActiveWorkoutApiService(httpClient, BASE_URL) as T
+            UserExerciseApiService::class -> UserExerciseApiService(httpClient) as T
+            ExerciseApiService::class -> ExerciseApiService(httpClient) as T
+            WorkoutHistoryApiService::class -> WorkoutHistoryApiService(httpClient) as T
+            PaymentApiService::class -> PaymentApiService(httpClient) as T
+            SubscriptionApiService::class -> SubscriptionApiService(httpClient) as T
+            StatsApiService::class -> StatsApiService(httpClient) as T
+            FeedbackApiService::class -> FeedbackApiService(httpClient) as T
+            NotificationApiService::class -> NotificationApiService(httpClient) as T
+            else -> throw IllegalArgumentException("Unknown service type: ${T::class}")
+        }
     }
 
-    // Servizi API disponibili
+    // Servizi API disponibili (lazy initialization)
     val apiService: ApiService by lazy {
-        retrofit.create(ApiService::class.java)
+        createService<ApiService>()
     }
 
     val workoutApiService: WorkoutApiService by lazy {
-        retrofit.create(WorkoutApiService::class.java)
+        createService<WorkoutApiService>()
     }
 
     val activeWorkoutApiService: ActiveWorkoutApiService by lazy {
-        retrofit.create(ActiveWorkoutApiService::class.java)
+        createService<ActiveWorkoutApiService>()
     }
 
     val userExerciseApiService: UserExerciseApiService by lazy {
-        retrofit.create(UserExerciseApiService::class.java)
+        createService<UserExerciseApiService>()
     }
 
     val exerciseApiService: ExerciseApiService by lazy {
-        retrofit.create(ExerciseApiService::class.java)
+        createService<ExerciseApiService>()
     }
 
     val workoutHistoryApiService: WorkoutHistoryApiService by lazy {
-        retrofit.create(WorkoutHistoryApiService::class.java)
+        createService<WorkoutHistoryApiService>()
     }
 
-    // Aggiungiamo il servizio per i pagamenti
     val paymentApiService: PaymentApiService by lazy {
-        retrofit.create(PaymentApiService::class.java)
+        createService<PaymentApiService>()
     }
 
-    // Aggiungiamo il servizio per gli abbonamenti
     val subscriptionApiService: SubscriptionApiService by lazy {
-        retrofit.create(SubscriptionApiService::class.java)
+        createService<SubscriptionApiService>()
     }
 
-    // Aggiungiamo il servizio per le statistiche
     val statsApiService: StatsApiService by lazy {
-        retrofit.create(StatsApiService::class.java)
+        createService<StatsApiService>()
     }
 
-    // Aggiungiamo il servizio per il feedback
     val feedbackApiService: FeedbackApiService by lazy {
-        retrofit.create(FeedbackApiService::class.java)
+        createService<FeedbackApiService>()
     }
 
-    // NUOVO: Servizio per le notifiche
     val notificationApiService: NotificationApiService by lazy {
-        retrofit.create(NotificationApiService::class.java)
+        createService<NotificationApiService>()
     }
 
+    // Utility functions
+    fun closeClient() {
+        httpClient.close()
+    }
+
+    // Per debugging/testing
+    fun getBaseUrl(): String = BASE_URL
 }

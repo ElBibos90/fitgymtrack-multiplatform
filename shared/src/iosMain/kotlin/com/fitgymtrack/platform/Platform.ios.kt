@@ -21,12 +21,13 @@ actual class Platform {
  */
 actual fun getPlatform(): Platform = Platform()
 
+// === LOGGING FUNCTIONS ===
 /**
  * iOS implementation del logging - DEBUG level
  * (usando println per semplicità)
  * In produzione si potrebbe usare CocoaLumberjack o altro
  */
-actual fun logDebug(tag: String, message: String) {
+actual fun platformLogDebug(tag: String, message: String) {
     println("[$tag] DEBUG: $message")
 }
 
@@ -34,6 +35,57 @@ actual fun logDebug(tag: String, message: String) {
  * iOS implementation del logging - ERROR level
  * (usando println con prefix ERROR)
  */
-actual fun logError(tag: String, message: String) {
+actual fun platformLogError(tag: String, message: String) {
     println("[$tag] ERROR: $message")
+}
+
+// === VERSION & DEVICE INFO FUNCTIONS ===
+/**
+ * iOS implementation - Version name
+ */
+actual fun getVersionName(): String {
+    return try {
+        "0.0.1-dev" // TODO: Get from Bundle.main.infoDictionary when available
+    } catch (e: Exception) {
+        "Unknown"
+    }
+}
+
+/**
+ * iOS implementation - Version code
+ */
+actual fun getVersionCode(): Int {
+    return try {
+        1 // TODO: Get from Bundle.main.infoDictionary when available
+    } catch (e: Exception) {
+        1
+    }
+}
+
+/**
+ * iOS implementation - Platform name
+ */
+actual fun getPlatformName(): String {
+    return UIDevice.currentDevice.systemName() ?: "iOS"
+}
+
+/**
+ * iOS implementation - Device manufacturer
+ */
+actual fun getDeviceManufacturer(): String {
+    return "Apple"
+}
+
+/**
+ * iOS implementation - Device model
+ */
+actual fun getDeviceModel(): String {
+    return UIDevice.currentDevice.model() ?: "Unknown"
+}
+
+/**
+ * iOS implementation - OS version
+ */
+actual fun getOSVersion(): String {
+    return UIDevice.currentDevice.systemVersion() ?: "Unknown"
 }

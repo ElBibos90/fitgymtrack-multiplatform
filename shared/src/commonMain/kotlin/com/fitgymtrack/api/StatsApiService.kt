@@ -1,110 +1,141 @@
 package com.fitgymtrack.api
 
 import com.fitgymtrack.models.*
-import com.google.gson.annotations.SerializedName
-import retrofit2.http.*
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
- * Interfaccia per le API delle statistiche utente
+ * Service per le API delle statistiche utente
+ * Implementazione Ktor multiplatform
  */
-interface StatsApiService {
+class StatsApiService(private val httpClient: HttpClient) {
+
     /**
      * Recupera le statistiche generali dell'utente
      */
-    @GET("android_user_stats.php")
-    suspend fun getUserStats(
-        @Query("user_id") userId: Int
-    ): UserStatsResponse
+    suspend fun getUserStats(userId: Int): UserStatsResponse {
+        return httpClient.get("android_user_stats.php") {
+            parameter("user_id", userId)
+        }.body()
+    }
 
     /**
      * Recupera le statistiche per un periodo specifico
      */
-    @GET("android_period_stats.php")
     suspend fun getPeriodStats(
-        @Query("user_id") userId: Int,
-        @Query("period") period: String, // "week", "month", "year"
-        @Query("start_date") startDate: String? = null,
-        @Query("end_date") endDate: String? = null
-    ): ApiResponse<PeriodStats>
+        userId: Int,
+        period: String,
+        startDate: String? = null,
+        endDate: String? = null
+    ): ApiResponse<PeriodStats> {
+        return httpClient.get("android_period_stats.php") {
+            parameter("user_id", userId)
+            parameter("period", period)
+            startDate?.let { parameter("start_date", it) }
+            endDate?.let { parameter("end_date", it) }
+        }.body()
+    }
 
     /**
      * Confronta le statistiche tra periodi
      */
-    @GET("android_stats_comparison.php")
     suspend fun getStatsComparison(
-        @Query("user_id") userId: Int,
-        @Query("period_type") periodType: String,
-        @Query("current_period") currentPeriod: String,
-        @Query("previous_period") previousPeriod: String
-    ): ApiResponse<StatsComparison>
+        userId: Int,
+        periodType: String,
+        currentPeriod: String,
+        previousPeriod: String
+    ): ApiResponse<StatsComparison> {
+        return httpClient.get("android_stats_comparison.php") {
+            parameter("user_id", userId)
+            parameter("period_type", periodType)
+            parameter("current_period", currentPeriod)
+            parameter("previous_period", previousPeriod)
+        }.body()
+    }
 
     /**
      * Recupera i record personali dell'utente
      */
-    @GET("android_personal_records.php")
     suspend fun getPersonalRecords(
-        @Query("user_id") userId: Int,
-        @Query("exercise_id") exerciseId: Int? = null
-    ): ApiResponse<List<PersonalRecord>>
+        userId: Int,
+        exerciseId: Int? = null
+    ): ApiResponse<List<PersonalRecord>> {
+        return httpClient.get("android_personal_records.php") {
+            parameter("user_id", userId)
+            exerciseId?.let { parameter("exercise_id", it) }
+        }.body()
+    }
 
     /**
      * Recupera gli achievement dell'utente
      */
-    @GET("android_achievements.php")
-    suspend fun getAchievements(
-        @Query("user_id") userId: Int
-    ): ApiResponse<List<Achievement>>
+    suspend fun getAchievements(userId: Int): ApiResponse<List<Achievement>> {
+        return httpClient.get("android_achievements.php") {
+            parameter("user_id", userId)
+        }.body()
+    }
 
     /**
      * Recupera la frequenza degli allenamenti
      */
-    @GET("android_workout_frequency.php")
     suspend fun getWorkoutFrequency(
-        @Query("user_id") userId: Int,
-        @Query("period") period: String = "month" // "week", "month", "year"
-    ): ApiResponse<WorkoutFrequency>
+        userId: Int,
+        period: String = "month"
+    ): ApiResponse<WorkoutFrequency> {
+        return httpClient.get("android_workout_frequency.php") {
+            parameter("user_id", userId)
+            parameter("period", period)
+        }.body()
+    }
 
     /**
      * Aggiorna un obiettivo/goal dell'utente
      */
-    @POST("android_update_goal.php")
-    suspend fun updateUserGoal(
-        @Body request: UpdateGoalRequest
-    ): ApiResponse<String>
+    suspend fun updateUserGoal(request: UpdateGoalRequest): ApiResponse<String> {
+        return httpClient.post("android_update_goal.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Calcola le statistiche aggregate
      */
-    @POST("android_calculate_stats.php")
-    suspend fun calculateStats(
-        @Body request: CalculateStatsRequest
-    ): ApiResponse<UserStats>
+    suspend fun calculateStats(request: CalculateStatsRequest): ApiResponse<UserStats> {
+        return httpClient.post("android_calculate_stats.php") {
+            setBody(request)
+        }.body()
+    }
 }
 
 /**
  * Richiesta per aggiornare un obiettivo
  */
+@Serializable
 data class UpdateGoalRequest(
-    @SerializedName("user_id")
+    @SerialName("user_id")
     val userId: Int,
-    @SerializedName("goal_type")
-    val goalType: String, // "weekly_workouts", "monthly_hours", etc.
-    @SerializedName("target_value")
+    @SerialName("goal_type")
+    val goalType: String,
+    @SerialName("target_value")
     val targetValue: Int,
-    @SerializedName("start_date")
+    @SerialName("start_date")
     val startDate: String? = null,
-    @SerializedName("end_date")
+    @SerialName("end_date")
     val endDate: String? = null
 )
 
 /**
  * Richiesta per calcolare statistiche
  */
+@Serializable
 data class CalculateStatsRequest(
-    @SerializedName("user_id")
+    @SerialName("user_id")
     val userId: Int,
-    @SerializedName("recalculate_all")
+    @SerialName("recalculate_all")
     val recalculateAll: Boolean = false,
-    @SerializedName("include_achievements")
+    @SerialName("include_achievements")
     val includeAchievements: Boolean = true
 )

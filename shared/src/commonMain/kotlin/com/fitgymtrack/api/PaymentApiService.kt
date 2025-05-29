@@ -1,30 +1,33 @@
 package com.fitgymtrack.api
 
 import com.fitgymtrack.models.ApiResponse
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Query
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
 
 /**
- * Interfaccia per le API di pagamento
+ * Service per le API di pagamento
+ * Implementazione Ktor multiplatform
  */
-interface PaymentApiService {
+class PaymentApiService(private val httpClient: HttpClient) {
+
     /**
      * Inizializza un pagamento PayPal
      */
-    @POST("android_paypal_payment.php")
-    suspend fun initializePayment(
-        @Body paymentRequest: PaymentRequest
-    ): ApiResponse<PaymentResponse>
+    suspend fun initializePayment(paymentRequest: PaymentRequest): ApiResponse<PaymentResponse> {
+        return httpClient.post("android_paypal_payment.php") {
+            setBody(paymentRequest)
+        }.body()
+    }
 
     /**
      * Verifica lo stato di un pagamento
      */
-    @GET("android_payment_status.php")
-    suspend fun checkPaymentStatus(
-        @Query("order_id") orderId: String
-    ): ApiResponse<PaymentStatus>
+    suspend fun checkPaymentStatus(orderId: String): ApiResponse<PaymentStatus> {
+        return httpClient.get("android_payment_status.php") {
+            parameter("order_id", orderId)
+        }.body()
+    }
 }
 
 /**

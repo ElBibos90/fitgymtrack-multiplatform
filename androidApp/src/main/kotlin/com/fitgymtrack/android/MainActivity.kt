@@ -1,4 +1,4 @@
-package com.fitgymtrack.app.android
+package com.fitgymtrack.android
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

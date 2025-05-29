@@ -1,65 +1,89 @@
 package com.fitgymtrack.api
 
 import com.fitgymtrack.models.*
-import retrofit2.http.*
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.http.*
 
-interface WorkoutApiService {
+/**
+ * Service per le API dei workout/schede
+ * Implementazione Ktor multiplatform
+ */
+class WorkoutApiService(private val httpClient: HttpClient) {
+
     /**
      * Recupera tutte le schede dell'utente
      */
-    @GET("schede_standalone.php")
-    suspend fun getWorkoutPlans(
-        @Query("user_id") userId: Int
-    ): WorkoutPlansResponse
+    suspend fun getWorkoutPlans(userId: Int): WorkoutPlansResponse {
+        return httpClient.get("schede_standalone.php") {
+            parameter("user_id", userId)
+        }.body()
+    }
 
     /**
      * Recupera gli esercizi di una scheda specifica
      */
-    @GET("schede_standalone.php")
-    suspend fun getWorkoutExercises(
-        @Query("scheda_id") schedaId: Int
-    ): WorkoutExercisesResponse
+    suspend fun getWorkoutExercises(schedaId: Int): WorkoutExercisesResponse {
+        return httpClient.get("schede_standalone.php") {
+            parameter("scheda_id", schedaId)
+        }.body()
+    }
 
     /**
      * Crea una nuova scheda
      */
-    @POST("create_scheda_standalone.php")
-    suspend fun createWorkoutPlan(
-        @Body request: CreateWorkoutPlanRequest
-    ): WorkoutPlanResponse
+    suspend fun createWorkoutPlan(request: CreateWorkoutPlanRequest): WorkoutPlanResponse {
+        return httpClient.post("create_scheda_standalone.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Aggiorna una scheda esistente
      */
-    @PUT("schede_standalone.php")
-    suspend fun updateWorkoutPlan(
-        @Body request: UpdateWorkoutPlanRequest
-    ): WorkoutPlanResponse
+    suspend fun updateWorkoutPlan(request: UpdateWorkoutPlanRequest): WorkoutPlanResponse {
+        return httpClient.put("schede_standalone.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
-     * Elimina una scheda - MODIFICATO per usare FormUrlEncoded invece di JSON
+     * Elimina una scheda - Form URL encoded
      */
-    @FormUrlEncoded
-    @HTTP(method = "DELETE", path = "schede_standalone.php", hasBody = true)
-    suspend fun deleteWorkoutPlan(
-        @Field("scheda_id") schedaId: Int
-    ): WorkoutPlanResponse
+    suspend fun deleteWorkoutPlan(schedaId: Int): WorkoutPlanResponse {
+        return httpClient.submitForm(
+            url = "schede_standalone.php",
+            formParameters = Parameters.build {
+                append("scheda_id", schedaId.toString())
+            }
+        ) {
+            method = HttpMethod.Delete
+        }.body()
+    }
 
     /**
      * Recupera tutti gli esercizi disponibili per la creazione/modifica schede
      */
-    @GET("get_esercizi_standalone.php")
-    suspend fun getAvailableExercises(
-        @Query("user_id") userId: Int
-    ): ExercisesResponse
+    suspend fun getAvailableExercises(userId: Int): ExercisesResponse {
+        return httpClient.get("get_esercizi_standalone.php") {
+            parameter("user_id", userId)
+        }.body()
+    }
 }
 
-// Risposte per gli esercizi disponibili
+/**
+ * Risposte per gli esercizi disponibili
+ */
 data class ExercisesResponse(
     val success: Boolean,
     val esercizi: List<ExerciseItem>
 )
 
+/**
+ * Modello per esercizio disponibile
+ */
 data class ExerciseItem(
     val id: Int,
     val nome: String,

@@ -21,16 +21,68 @@ actual class Platform {
  */
 actual fun getPlatform(): Platform = Platform()
 
+// === LOGGING FUNCTIONS ===
 /**
  * Android implementation del logging - DEBUG level
  */
-actual fun logDebug(tag: String, message: String) {
+actual fun platformLogDebug(tag: String, message: String) {
     Log.d(tag, message)
 }
 
 /**
  * Android implementation del logging - ERROR level
  */
-actual fun logError(tag: String, message: String) {
+actual fun platformLogError(tag: String, message: String) {
     Log.e(tag, message)
+}
+
+// === VERSION & DEVICE INFO FUNCTIONS ===
+/**
+ * Android implementation - Version name
+ */
+actual fun getVersionName(): String {
+    return try {
+        "0.0.1-dev" // TODO: Get from BuildConfig.VERSION_NAME when available
+    } catch (e: Exception) {
+        "Unknown"
+    }
+}
+
+/**
+ * Android implementation - Version code
+ */
+actual fun getVersionCode(): Int {
+    return try {
+        1 // TODO: Get from BuildConfig.VERSION_CODE when available
+    } catch (e: Exception) {
+        1
+    }
+}
+
+/**
+ * Android implementation - Platform name
+ */
+actual fun getPlatformName(): String {
+    return "Android"
+}
+
+/**
+ * Android implementation - Device manufacturer
+ */
+actual fun getDeviceManufacturer(): String {
+    return Build.MANUFACTURER ?: "Unknown"
+}
+
+/**
+ * Android implementation - Device model
+ */
+actual fun getDeviceModel(): String {
+    return Build.MODEL ?: "Unknown"
+}
+
+/**
+ * Android implementation - OS version
+ */
+actual fun getOSVersion(): String {
+    return Build.VERSION.RELEASE ?: "Unknown"
 }

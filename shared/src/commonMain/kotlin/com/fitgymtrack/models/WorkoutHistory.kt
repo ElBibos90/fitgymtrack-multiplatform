@@ -94,7 +94,7 @@ data class WorkoutHistory(
                 is String -> idValue.toIntOrNull() ?: 0
                 else -> {
                     logError("WorkoutHistory", "ID allenamento di tipo sconosciuto: ${idValue?.javaClass?.name}")
-                    0
+
                 }
             }
 

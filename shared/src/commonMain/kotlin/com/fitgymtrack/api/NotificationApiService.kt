@@ -4,80 +4,87 @@ import com.fitgymtrack.models.ApiResponse
 import com.fitgymtrack.models.AppVersionResponse
 import com.fitgymtrack.models.MarkMessageReadRequest
 import com.fitgymtrack.models.UserMessagesResponse
-import retrofit2.http.Body
-import retrofit2.http.DELETE
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Query
+import com.fitgymtrack.platform.*
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
 
 /**
  * API Service per gestione notifiche e version checking
+ * Implementazione Ktor multiplatform
  */
-interface NotificationApiService {
+class NotificationApiService(private val httpClient: HttpClient) {
 
     /**
      * Verifica se è disponibile un aggiornamento dell'app
-     * Usa BuildConfig.VERSION_NAME e BuildConfig.VERSION_CODE
      */
-    @POST("app_version_check.php")
-    suspend fun checkAppVersion(
-        @Body request: AppVersionCheckRequest
-    ): AppVersionResponse
+    suspend fun checkAppVersion(request: AppVersionCheckRequest): AppVersionResponse {
+        return httpClient.post("app_version_check.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Recupera messaggi per l'utente corrente
      */
-    @GET("user_messages.php")
     suspend fun getUserMessages(
-        @Query("include_read") includeRead: Boolean = false,
-        @Query("limit") limit: Int = 50
-    ): UserMessagesResponse
+        includeRead: Boolean = false,
+        limit: Int = 50
+    ): UserMessagesResponse {
+        return httpClient.get("user_messages.php") {
+            parameter("include_read", includeRead)
+            parameter("limit", limit)
+        }.body()
+    }
 
     /**
      * Marca un messaggio come letto
      */
-    @POST("user_messages.php")
-    suspend fun markMessageAsRead(
-        @Body request: MarkMessageReadRequest
-    ): ApiResponse<String>
+    suspend fun markMessageAsRead(request: MarkMessageReadRequest): ApiResponse<String> {
+        return httpClient.post("user_messages.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Marca tutti i messaggi come letti
      */
-    @POST("user_messages.php")
-    suspend fun markAllMessagesAsRead(): ApiResponse<String>
+    suspend fun markAllMessagesAsRead(): ApiResponse<String> {
+        return httpClient.post("user_messages.php").body()
+    }
 
     /**
      * Elimina un messaggio (solo se permesso)
      */
-    @DELETE("user_messages.php")
-    suspend fun deleteMessage(
-        @Query("message_id") messageId: String
-    ): ApiResponse<String>
-
-    // === ADMIN ENDPOINTS (per sviluppatore) ===
+    suspend fun deleteMessage(messageId: String): ApiResponse<String> {
+        return httpClient.delete("user_messages.php") {
+            parameter("message_id", messageId)
+        }.body()
+    }
 
     /**
      * Invia un messaggio diretto (solo admin)
      */
-    @POST("admin_messages.php")
-    suspend fun sendDirectMessage(
-        @Body request: SendMessageRequest
-    ): ApiResponse<String>
+    suspend fun sendDirectMessage(request: SendMessageRequest): ApiResponse<String> {
+        return httpClient.post("admin_messages.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Recupera statistiche messaggi (solo admin)
      */
-    @GET("admin_messages.php")
-    suspend fun getMessageStats(): ApiResponse<MessageStats>
+    suspend fun getMessageStats(): ApiResponse<MessageStats> {
+        return httpClient.get("admin_messages.php").body()
+    }
 }
 
 /**
  * Richiesta per check versione app
  */
 data class AppVersionCheckRequest(
-    val current_version: String,           // BuildConfig.VERSION_NAME
-    val current_version_code: Int,         // BuildConfig.VERSION_CODE
+    val current_version: String,
+    val current_version_code: Int,
     val platform: String = "android",
     val device_info: DeviceInfo? = null
 )
@@ -96,12 +103,12 @@ data class DeviceInfo(
  * Richiesta per inviare messaggio diretto (admin)
  */
 data class SendMessageRequest(
-    val target_user_id: Int? = null,      // null = broadcast
+    val target_user_id: Int? = null,
     val title: String,
     val message: String,
     val is_markdown: Boolean = false,
-    val priority: String = "NORMAL",       // LOW, NORMAL, HIGH, URGENT
-    val expires_at: String? = null,        // YYYY-MM-DD HH:MM:SS
+    val priority: String = "NORMAL",
+    val expires_at: String? = null,
     val image_url: String? = null,
     val action_button: ActionButtonRequest? = null
 )
@@ -111,7 +118,7 @@ data class SendMessageRequest(
  */
 data class ActionButtonRequest(
     val text: String,
-    val action: String,                    // "url", "deeplink", "dismiss"
+    val action: String,
     val data: String
 )
 
@@ -123,7 +130,7 @@ data class MessageStats(
     val total_users: Int,
     val messages_sent_today: Int,
     val messages_sent_this_week: Int,
-    val read_rate: Double,                 // Percentuale lettura
+    val read_rate: Double,
     val recent_messages: List<RecentMessage>
 )
 
@@ -138,56 +145,3 @@ data class RecentMessage(
     val read_count: Int,
     val read_rate: Double
 )
-
-/**
- * Helper per creare richieste version check
- */
-object VersionCheckHelper {
-
-    /**
-     * Crea richiesta version check usando BuildConfig
-     */
-
-    expect fun createDeviceInfo(): DeviceInfo
-
-    fun createVersionCheckRequest(): AppVersionCheckRequest {
-        return AppVersionCheckRequest(
-            current_version = getPlatformVersion(), // expect function
-            current_version_code = getAppVersionCode(), // expect function
-            platform = getPlatformName().lowercase(),
-            device_info = createDeviceInfo()
-        )
-    }
-
-    /**
-     * Verifica se un aggiornamento è disponibile
-     */
-    fun isUpdateAvailable(response: AppVersionResponse, currentVersionCode: Int): Boolean {
-        return response.update_available && response.latest_version_code > currentVersionCode
-    }
-
-    /**
-     * Determina se l'aggiornamento è critico
-     */
-    fun isCriticalUpdate(response: AppVersionResponse): Boolean {
-        return response.is_critical
-    }
-}
-
-/**
- * Costanti per l'API
- */
-object NotificationApiConstants {
-    const val VERSION_CHECK_ENDPOINT = "app_version_check.php"
-    const val USER_MESSAGES_ENDPOINT = "user_messages.php"
-    const val ADMIN_MESSAGES_ENDPOINT = "admin_messages.php"
-
-    // Cache durations
-    const val VERSION_CHECK_CACHE_DURATION = 24 * 60 * 60 * 1000L // 24 ore
-    const val MESSAGES_CACHE_DURATION = 5 * 60 * 1000L // 5 minuti
-
-    // Limiti
-    const val MAX_MESSAGES_PER_REQUEST = 100
-    const val MAX_MESSAGE_LENGTH = 2000
-    const val MAX_TITLE_LENGTH = 100
-}

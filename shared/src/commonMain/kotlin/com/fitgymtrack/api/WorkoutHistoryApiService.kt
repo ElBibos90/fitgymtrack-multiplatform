@@ -1,49 +1,58 @@
 package com.fitgymtrack.api
 
 import com.fitgymtrack.models.*
-import retrofit2.http.*
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
 
 /**
- * API interface for workout history operations
+ * Service per le API della cronologia workout
+ * Implementazione Ktor multiplatform
  */
-interface WorkoutHistoryApiService {
+class WorkoutHistoryApiService(private val httpClient: HttpClient) {
+
     /**
      * Get the workout history for a user
      */
-    @GET("get_allenamenti_standalone.php")
-    suspend fun getWorkoutHistory(
-        @Query("user_id") userId: Int
-    ): Map<String, Any>
+    suspend fun getWorkoutHistory(userId: Int): Map<String, Any> {
+        return httpClient.get("get_allenamenti_standalone.php") {
+            parameter("user_id", userId)
+        }.body()
+    }
 
     /**
      * Get the completed series for a specific workout
      */
-    @GET("get_completed_series_standalone.php")
-    suspend fun getWorkoutSeriesDetail(
-        @Query("allenamento_id") allenamentoId: Int
-    ): GetCompletedSeriesResponse
+    suspend fun getWorkoutSeriesDetail(allenamentoId: Int): GetCompletedSeriesResponse {
+        return httpClient.get("get_completed_series_standalone.php") {
+            parameter("allenamento_id", allenamentoId)
+        }.body()
+    }
 
     /**
      * Delete a specific series
      */
-    @HTTP(method = "DELETE", path = "delete_completed_series.php", hasBody = true)
-    suspend fun deleteCompletedSeries(
-        @Body request: DeleteSeriesRequest
-    ): SeriesOperationResponse
+    suspend fun deleteCompletedSeries(request: DeleteSeriesRequest): SeriesOperationResponse {
+        return httpClient.delete("delete_completed_series.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Update a specific series
      */
-    @HTTP(method = "PUT", path = "update_completed_series.php", hasBody = true)
-    suspend fun updateCompletedSeries(
-        @Body request: UpdateSeriesRequest
-    ): SeriesOperationResponse
+    suspend fun updateCompletedSeries(request: UpdateSeriesRequest): SeriesOperationResponse {
+        return httpClient.put("update_completed_series.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Delete an entire workout
      */
-    @POST("delete_allenamento_standalone.php")
-    suspend fun deleteWorkout(
-        @Body request: Map<String, Int>
-    ): SeriesOperationResponse
+    suspend fun deleteWorkout(request: Map<String, Int>): SeriesOperationResponse {
+        return httpClient.post("delete_allenamento_standalone.php") {
+            setBody(request)
+        }.body()
+    }
 }

@@ -1,16 +1,29 @@
 package com.fitgymtrack.api
 
 import com.fitgymtrack.models.Exercise
-import retrofit2.http.GET
-import retrofit2.http.Query
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
 
 /**
- * Interfaccia per l'API degli esercizi
+ * Service per l'API degli esercizi
+ * Implementazione Ktor multiplatform
  */
-interface ExerciseApiService {
-    @GET("esercizi.php")
-    suspend fun getExercises(): List<Exercise>
+class ExerciseApiService(private val httpClient: HttpClient) {
 
-    @GET("esercizi.php")
-    suspend fun getExercise(@Query("id") id: Int): Exercise
+    /**
+     * Recupera tutti gli esercizi disponibili
+     */
+    suspend fun getExercises(): List<Exercise> {
+        return httpClient.get("esercizi.php").body()
+    }
+
+    /**
+     * Recupera un esercizio specifico per ID
+     */
+    suspend fun getExercise(id: Int): Exercise {
+        return httpClient.get("esercizi.php") {
+            parameter("id", id)
+        }.body()
+    }
 }

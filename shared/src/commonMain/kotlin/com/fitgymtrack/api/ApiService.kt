@@ -1,94 +1,174 @@
 package com.fitgymtrack.api
 
 import com.fitgymtrack.models.*
-import retrofit2.http.*
-import okhttp3.ResponseBody
-import retrofit2.Response
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import kotlinx.serialization.json.*
 
-interface ApiService {
-    @POST("auth.php")
-    suspend fun login(
-        @Query("action") action: String = "login",
-        @Body loginRequest: LoginRequest
-    ): LoginResponse
+/**
+ * Service principale per le API di autenticazione, profilo utente e gestione generale
+ * Implementazione Ktor multiplatform
+ */
+class ApiService(private val httpClient: HttpClient) {
 
-    @POST("standalone_register.php")
-    suspend fun register(
-        @Body registerRequest: RegisterRequest
-    ): RegisterResponse
+    // ==================== AUTH ENDPOINTS ====================
 
-    @GET("utente_profilo.php")
-    suspend fun getUserProfile(): UserProfile
+    /**
+     * Login utente
+     */
+    suspend fun login(loginRequest: LoginRequest): LoginResponse {
+        return httpClient.post("auth.php") {
+            parameter("action", "login")
+            setBody(loginRequest)
+        }.body()
+    }
 
-    @PUT("utente_profilo.php")
-    suspend fun updateUserProfile(
-        @Body userProfile: UserProfile
-    ): Map<String, Any>
+    /**
+     * Registrazione nuovo utente
+     */
+    suspend fun register(registerRequest: RegisterRequest): RegisterResponse {
+        return httpClient.post("standalone_register.php") {
+            setBody(registerRequest)
+        }.body()
+    }
 
-    // Modificato per ricevere ResponseBody invece di un oggetto tipizzato
-    @POST("password_reset.php")
-    suspend fun requestPasswordReset(
-        @Query("action") action: String = "request",
-        @Body resetRequest: PasswordResetRequest
-    ): Response<ResponseBody>
+    // ==================== USER PROFILE ENDPOINTS ====================
 
-    // Modificato per ricevere ResponseBody invece di un oggetto tipizzato
-    @POST("reset_simple.php")
-    suspend fun confirmPasswordReset(
-        @Query("action") action: String = "reset",
-        @Body resetConfirmRequest: PasswordResetConfirmRequest
-    ): Response<ResponseBody>
+    /**
+     * Recupera il profilo utente corrente
+     */
+    suspend fun getUserProfile(): UserProfile {
+        return httpClient.get("utente_profilo.php").body()
+    }
 
-    @GET("subscription_api.php")
-    suspend fun getCurrentSubscription(
-        @Query("action") action: String = "current_subscription"
-    ): Map<String, Any>
+    /**
+     * Aggiorna il profilo utente
+     */
+    suspend fun updateUserProfile(userProfile: UserProfile): Map<String, Any> {
+        return httpClient.put("utente_profilo.php") {
+            setBody(userProfile)
+        }.body()
+    }
 
-    @GET("subscription_api.php")
-    suspend fun checkResourceLimits(
-        @Query("resource_type") resourceType: String,
-        @Query("action") action: String = "check_limits"
-    ): Map<String, Any>
+    // ==================== PASSWORD RESET ENDPOINTS ====================
 
-    @POST("subscription_api.php")
-    suspend fun updatePlan(
-        @Body request: Map<String, Any>,
-        @Query("action") action: String = "update_plan"
-    ): Map<String, Any>
+    /**
+     * Richiede il reset della password
+     * Restituisce HttpResponse per gestire response non tipizzate
+     */
+    suspend fun requestPasswordReset(resetRequest: PasswordResetRequest): HttpResponse {
+        return httpClient.post("password_reset.php") {
+            parameter("action", "request")
+            setBody(resetRequest)
+        }
+    }
 
-    // Per la gestione dei pagamenti (opzionale se implementi pagamenti PayPal)
-    @POST("paypal_payment.php")
-    suspend fun initializePayment(
-        @Body paymentRequest: PaymentRequest
-    ): PaymentResponse
+    /**
+     * Conferma il reset della password
+     * Restituisce HttpResponse per gestire response non tipizzate
+     */
+    suspend fun confirmPasswordReset(resetConfirmRequest: PasswordResetConfirmRequest): HttpResponse {
+        return httpClient.post("reset_simple.php") {
+            parameter("action", "reset")
+            setBody(resetConfirmRequest)
+        }
+    }
+
+    // ==================== SUBSCRIPTION ENDPOINTS ====================
+
+    /**
+     * Recupera l'abbonamento corrente
+     */
+    suspend fun getCurrentSubscription(): Map<String, Any> {
+        return httpClient.get("subscription_api.php") {
+            parameter("action", "current_subscription")
+        }.body()
+    }
+
+    /**
+     * Verifica i limiti delle risorse
+     */
+    suspend fun checkResourceLimits(resourceType: String): Map<String, Any> {
+        return httpClient.get("subscription_api.php") {
+            parameter("resource_type", resourceType)
+            parameter("action", "check_limits")
+        }.body()
+    }
+
+    /**
+     * Aggiorna il piano di abbonamento
+     */
+    suspend fun updatePlan(request: Map<String, Any>): Map<String, Any> {
+        return httpClient.post("subscription_api.php") {
+            parameter("action", "update_plan")
+            setBody(request)
+        }.body()
+    }
+
+    // ==================== PAYMENT ENDPOINTS ====================
+
+    /**
+     * Inizializza un pagamento PayPal
+     */
+    suspend fun initializePayment(paymentRequest: PaymentRequest): PaymentResponse {
+        return httpClient.post("paypal_payment.php") {
+            setBody(paymentRequest)
+        }.body()
+    }
+
+    // ==================== FEEDBACK ENDPOINTS ====================
 
     /**
      * Invia un feedback
      */
-    @POST("feedback_api.php")
-    suspend fun submitFeedback(
-        @Body feedbackRequest: FeedbackRequest
-    ): FeedbackResponse
+    suspend fun submitFeedback(feedbackRequest: FeedbackRequest): FeedbackResponse {
+        return httpClient.post("feedback_api.php") {
+            setBody(feedbackRequest)
+        }.body()
+    }
 
     /**
      * Recupera tutti i feedback (solo per admin)
      */
-    @GET("feedback_api.php")
-    suspend fun getFeedbacks(): Map<String, Any>
+    suspend fun getFeedbacks(): Map<String, Any> {
+        return httpClient.get("feedback_api.php").body()
+    }
 
     /**
      * Aggiorna lo stato di un feedback (solo per admin)
      */
-    @POST("feedback_api.php")
-    suspend fun updateFeedbackStatus(
-        @Body request: Map<String, Any>
-    ): Map<String, Any>
+    suspend fun updateFeedbackStatus(request: Map<String, Any>): Map<String, Any> {
+        return httpClient.post("feedback_api.php") {
+            setBody(request)
+        }.body()
+    }
 
     /**
      * Aggiorna le note admin di un feedback (solo per admin)
      */
-    @POST("feedback_api.php")
-    suspend fun updateFeedbackNotes(
-        @Body request: Map<String, Any>
-    ): Map<String, Any>
+    suspend fun updateFeedbackNotes(request: Map<String, Any>): Map<String, Any> {
+        return httpClient.post("feedback_api.php") {
+            setBody(request)
+        }.body()
+    }
+
+    // ==================== UTILITY METHODS ====================
+
+    /**
+     * Estrae il testo dalla risposta HTTP per endpoint che restituiscono plain text
+     */
+    suspend fun HttpResponse.bodyAsText(): String = this.bodyAsText()
+
+    /**
+     * Verifica se la risposta HTTP è successful
+     */
+    fun HttpResponse.isSuccessful(): Boolean = this.status.isSuccess()
+
+    /**
+     * Ottiene lo status code della risposta
+     */
+    fun HttpResponse.statusCode(): Int = this.status.value
 }
