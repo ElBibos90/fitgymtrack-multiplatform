@@ -4,28 +4,19 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-// Retrieve shared configuration from root project
-val compileSdk: Int by rootProject.extra
-val targetSdk: Int by rootProject.extra
-val minSdk: Int by rootProject.extra
-val namespace: String by rootProject.extra
-val gitCommitCount: Int by rootProject.extra
-val gitSha: String by rootProject.extra
-val versionName: String by rootProject.extra
-
 android {
-    namespace = "$namespace.android"
-    compileSdk = compileSdk
+    namespace = "com.fitgymtrack.app.android"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = namespace
-        minSdk = minSdk
-        targetSdk = targetSdk
-        versionCode = gitCommitCount
-        versionName = versionName
+        applicationId = "com.fitgymtrack.app"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = "0.0.1-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -33,8 +24,8 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "VERSION_NAME", "\"$versionName\"")
-            buildConfigField("int", "VERSION_CODE", "$gitCommitCount")
+            buildConfigField("String", "VERSION_NAME", "\"0.0.1-dev\"")
+            buildConfigField("int", "VERSION_CODE", "1")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
@@ -45,25 +36,25 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "VERSION_NAME", "\"$versionName\"")
-            buildConfigField("int", "VERSION_CODE", "$gitCommitCount")
+            buildConfigField("String", "VERSION_NAME", "\"0.0.1-dev\"")
+            buildConfigField("int", "VERSION_CODE", "1")
         }
     }
-    
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    
+
     kotlinOptions {
         jvmTarget = "11"
     }
-    
+
     buildFeatures {
         compose = true
         buildConfig = true
     }
-    
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -74,7 +65,10 @@ android {
 dependencies {
     // === SHARED MODULE ===
     implementation(project(":shared"))
-    
+
+// === APPCOMPAT ===
+    implementation("androidx.appcompat:appcompat:1.6.1")
+
     // === ANDROID COMPOSE BOM ===
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -83,17 +77,17 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.foundation)
-    
+
     // === ACTIVITY COMPOSE ===
     implementation(libs.androidx.activity.compose)
-    
+
     // === TESTING ===
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-    
+
     // === DEBUG ===
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

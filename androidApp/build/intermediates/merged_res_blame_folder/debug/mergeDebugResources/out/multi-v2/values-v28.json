@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.fitgymtrack.app.android.androidApp-mergeDebugResources-64:/values-v28/values-v28.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Eddy\\.gradle\\caches\\8.12\\transforms\\f77b1b71503473d7257f0bd00bc368a2\\transformed\\appcompat-1.6.1\\res\\values-v28\\values-v28.xml",
+                    "from": {
+                        "startLines": "2,3,4,8",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,130,217,397",
+                        "endLines": "2,3,7,11",
+                        "endColumns": "74,86,12,12",
+                        "endOffsets": "125,212,392,584"
+                    }
+                }
+            ]
+        }
+    ]
+}

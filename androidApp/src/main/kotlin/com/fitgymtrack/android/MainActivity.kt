@@ -1,4 +1,4 @@
-package com.fitgymtrack.android
+package com.fitgymtrack.app.android
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -6,24 +6,28 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.fitgymtrack.android.ui.theme.FitGymTrackTheme
+import androidx.compose.ui.unit.dp
 import com.fitgymtrack.platform.getWelcomeMessage
+import androidx.compose.foundation.layout.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            FitGymTrackTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    WelcomeScreen(
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            MaterialTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    WelcomeScreen()
                 }
             }
         }
@@ -32,20 +36,27 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun WelcomeScreen(modifier: Modifier = Modifier) {
-    Text(
-        text = getWelcomeMessage() + "\n\n" +
-                "✅ FASE 0 Completata!\n" +
-                "✅ expect/actual funzionante!\n" +
-                "✅ Shared module ok!\n" +
-                "✅ Pronto per migrazione! 💪",
-        modifier = modifier
-    )
+    Column(
+        modifier = modifier.padding(50.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = getWelcomeMessage(),
+            style = MaterialTheme.typography.headlineSmall
+        )
+        
+        Text("✅ FASE 0 COMPLETATA!")
+        Text("✅ expect/actual funzionante!")
+        Text("✅ Shared module ok!")
+        Text("✅ Build Android successful!")
+        Text("✅ Pronto per migrazione! 💪")
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
 fun WelcomeScreenPreview() {
-    FitGymTrackTheme {
+    MaterialTheme {
         WelcomeScreen()
     }
 }
