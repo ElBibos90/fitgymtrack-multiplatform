@@ -3,6 +3,12 @@ package com.fitgymtrack.platform
 import platform.UIKit.UIDevice
 
 /**
+ * iOS implementation - Context placeholder
+ * In iOS non esiste Context come Android, quindi usiamo una class vuota
+ */
+actual class PlatformContext()
+
+/**
  * iOS implementation of Platform
  */
 actual class Platform {
@@ -16,9 +22,18 @@ actual class Platform {
 actual fun getPlatform(): Platform = Platform()
 
 /**
- * iOS implementation del logging (usando println per semplicità)
+ * iOS implementation del logging - DEBUG level
+ * (usando println per semplicità)
  * In produzione si potrebbe usare CocoaLumberjack o altro
  */
 actual fun logDebug(tag: String, message: String) {
-    println("[$tag] $message")
+    println("[$tag] DEBUG: $message")
+}
+
+/**
+ * iOS implementation del logging - ERROR level
+ * (usando println con prefix ERROR)
+ */
+actual fun logError(tag: String, message: String) {
+    println("[$tag] ERROR: $message")
 }

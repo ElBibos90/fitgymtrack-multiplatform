@@ -4,6 +4,11 @@ import android.os.Build
 import android.util.Log
 
 /**
+ * Android implementation - Context wrapper
+ */
+actual class PlatformContext(val androidContext: android.content.Context)
+
+/**
  * Android implementation of Platform
  */
 actual class Platform {
@@ -17,12 +22,15 @@ actual class Platform {
 actual fun getPlatform(): Platform = Platform()
 
 /**
- * Android implementation del logging
+ * Android implementation del logging - DEBUG level
  */
 actual fun logDebug(tag: String, message: String) {
     Log.d(tag, message)
 }
 
+/**
+ * Android implementation del logging - ERROR level
+ */
 actual fun logError(tag: String, message: String) {
-    android.util.Log.e(tag, message)
+    Log.e(tag, message)
 }

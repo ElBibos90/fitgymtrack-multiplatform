@@ -2,6 +2,11 @@
 package com.fitgymtrack.platform
 
 /**
+ * Platform-specific context type
+ */
+expect class PlatformContext
+
+/**
  * Platform information interface per testare il setup multiplatform
  */
 expect class Platform() {
@@ -15,10 +20,13 @@ expect class Platform() {
 expect fun getPlatform(): Platform
 
 /**
- * Logging multiplatform di test
+ * Logging multiplatform - DEBUG level
  */
 expect fun logDebug(tag: String, message: String)
 
+/**
+ * Logging multiplatform - ERROR level
+ */
 expect fun logError(tag: String, message: String)
 
 /**
