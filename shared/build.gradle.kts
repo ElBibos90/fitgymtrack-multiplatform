@@ -29,7 +29,9 @@ kotlin {
                 implementation("io.ktor:ktor-client-okhttp:2.3.9")
                 implementation("io.ktor:ktor-client-logging:2.3.9")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.9")
-
+				
+				implementation("io.ktor:ktor-client-auth:2.3.9")                    
+				implementation("io.ktor:ktor-client-content-negotiation:2.3.9") 
 
 
                 implementation("org.jetbrains.compose.runtime:runtime:1.7.3")
