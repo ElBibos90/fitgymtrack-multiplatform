@@ -13,6 +13,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.days
@@ -26,14 +29,14 @@ class NotificationCleanupSystem private constructor(
 ) {
 
     private val TAG = "NotificationCleanup"
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     companion object {
-        @Volatile
         private var INSTANCE: NotificationCleanupSystem? = null
+        private val mutex = Mutex()
 
-        fun getInstance(context: PlatformContext): NotificationCleanupSystem {
-            return INSTANCE ?: synchronized(this) {
+        suspend fun getInstance(context: PlatformContext): NotificationCleanupSystem {
+            return mutex.withLock {
                 INSTANCE ?: NotificationCleanupSystem(
                     context,
                     NotificationRepository(context)
@@ -50,9 +53,6 @@ class NotificationCleanupSystem private constructor(
 
     private var isRunning = false
 
-    /**
-     * Avvia il sistema di cleanup periodico
-     */
     fun startPeriodicCleanup() {
         if (isRunning) {
             logDebug(TAG, "⚠️ Cleanup già in esecuzione")
@@ -76,9 +76,6 @@ class NotificationCleanupSystem private constructor(
         }
     }
 
-    /**
-     * Esegue cleanup completo
-     */
     suspend fun performCleanup() {
         try {
             logDebug(TAG, "🧹 Inizio cleanup completo")
@@ -88,27 +85,21 @@ class NotificationCleanupSystem private constructor(
 
             logDebug(TAG, "📊 Notifiche iniziali: $initialCount")
 
-            // 1. Rimuovi notifiche scadute
             val afterExpiredCleanup = removeExpiredNotifications(notifications)
             logDebug(TAG, "🗑️ Dopo rimozione scadute: ${afterExpiredCleanup.size}")
 
-            // 2. Rimuovi notifiche troppo vecchie
             val afterAgeCleanup = removeOldNotifications(afterExpiredCleanup)
             logDebug(TAG, "📅 Dopo rimozione vecchie: ${afterAgeCleanup.size}")
 
-            // 3. Limita numero totale
             val afterCountLimit = limitTotalNotifications(afterAgeCleanup)
             logDebug(TAG, "📝 Dopo limite count: ${afterCountLimit.size}")
 
-            // 4. Rimuovi duplicati
             val afterDeduplication = removeDuplicates(afterCountLimit)
             logDebug(TAG, "🔗 Dopo deduplicazione: ${afterDeduplication.size}")
 
-            // 5. Ottimizza per performance
             val optimized = optimizeForPerformance(afterDeduplication)
             logDebug(TAG, "⚡ Dopo ottimizzazione: ${optimized.size}")
 
-            // 6. Salva risultati se ci sono cambiamenti
             if (optimized.size != initialCount) {
                 saveCleanedNotifications(optimized)
                 logDebug(TAG, "✅ Cleanup completato: $initialCount → ${optimized.size}")
@@ -121,44 +112,30 @@ class NotificationCleanupSystem private constructor(
         }
     }
 
-    /**
-     * Rimuovi notifiche scadute
-     */
     private fun removeExpiredNotifications(notifications: List<Notification>): List<Notification> {
         val now = Clock.System.now().toEpochMilliseconds()
         return notifications.filter { notification ->
             notification.expiryDate?.let { expiry ->
                 now <= expiry
-            } ?: true // Se non ha scadenza, mantieni
+            } ?: true
         }
     }
 
-    /**
-     * Rimuovi notifiche troppo vecchie
-     */
     private fun removeOldNotifications(notifications: List<Notification>): List<Notification> {
         val cutoffTime = Clock.System.now().toEpochMilliseconds() - MAX_AGE_DAYS.days.inWholeMilliseconds
 
         return notifications.filter { notification ->
-            // Mantieni se:
-            // 1. È più recente del cutoff
-            // 2. È URGENT e non letta (anche se vecchia)
-            // 3. È SUBSCRIPTION_EXPIRED (importante)
             notification.timestamp > cutoffTime ||
                     (notification.priority == NotificationPriority.URGENT && !notification.isRead) ||
                     notification.type == NotificationType.SUBSCRIPTION_EXPIRED
         }
     }
 
-    /**
-     * Limita numero totale di notifiche
-     */
     private fun limitTotalNotifications(notifications: List<Notification>): List<Notification> {
         if (notifications.size <= MAX_NOTIFICATIONS) {
             return notifications
         }
 
-        // Ordina per priorità e timestamp
         val sorted = notifications.sortedWith(
             compareByDescending<Notification> { it.priority.ordinal }
                 .thenByDescending { it.timestamp }
@@ -167,14 +144,10 @@ class NotificationCleanupSystem private constructor(
         return sorted.take(MAX_NOTIFICATIONS)
     }
 
-    /**
-     * Rimuovi duplicati dello stesso tipo
-     */
     private fun removeDuplicates(notifications: List<Notification>): List<Notification> {
         val result = mutableListOf<Notification>()
         val typeCount = mutableMapOf<NotificationType, Int>()
 
-        // Ordina per timestamp decrescente (più recenti prima)
         val sorted = notifications.sortedByDescending { it.timestamp }
 
         for (notification in sorted) {
@@ -191,13 +164,8 @@ class NotificationCleanupSystem private constructor(
         return result
     }
 
-    /**
-     * Ottimizza per performance
-     */
     private fun optimizeForPerformance(notifications: List<Notification>): List<Notification> {
-        // Raggruppa notifiche simili se troppe
         return if (notifications.size > 50) {
-            // Mantieni solo le più importanti per performance
             notifications.sortedWith(
                 compareByDescending<Notification> { it.priority.ordinal }
                     .thenByDescending { !it.isRead }
@@ -208,28 +176,17 @@ class NotificationCleanupSystem private constructor(
         }
     }
 
-    /**
-     * Salva notifiche pulite
-     */
     private suspend fun saveCleanedNotifications(notifications: List<Notification>) {
         try {
-            // Implementazione specifica per salvare le notifiche pulite
-            // Per ora, utilizziamo il repository esistente
             repository.clearAllNotifications()
-
-            // Salva una per una (non ottimale, ma funziona)
             notifications.forEach { notification ->
                 repository.saveNotification(notification)
             }
-
         } catch (e: Exception) {
             logError(TAG, "❌ Errore salva notifiche pulite: ${e.message}")
         }
     }
 
-    /**
-     * Cleanup mirato per tipo specifico
-     */
     suspend fun cleanupByType(type: NotificationType) {
         try {
             logDebug(TAG, "🎯 Cleanup per tipo: $type")
@@ -247,9 +204,6 @@ class NotificationCleanupSystem private constructor(
         }
     }
 
-    /**
-     * Cleanup notifiche lette vecchie
-     */
     suspend fun cleanupReadNotifications(olderThanDays: Long = 7) {
         try {
             logDebug(TAG, "📖 Cleanup notifiche lette vecchie")
@@ -258,7 +212,6 @@ class NotificationCleanupSystem private constructor(
             val notifications = repository.getAllNotifications().first()
 
             val filtered = notifications.filter { notification ->
-                // Mantieni se non è letta O è più recente del cutoff
                 !notification.isRead || notification.timestamp > cutoffTime
             }
 
@@ -272,9 +225,6 @@ class NotificationCleanupSystem private constructor(
         }
     }
 
-    /**
-     * Statistiche sistema
-     */
     suspend fun getCleanupStats(): CleanupStats {
         return try {
             val notifications = repository.getAllNotifications().first()
@@ -301,9 +251,6 @@ class NotificationCleanupSystem private constructor(
         }
     }
 
-    /**
-     * Stop cleanup system
-     */
     fun stopCleanup() {
         isRunning = false
         logDebug(TAG, "🛑 Sistema cleanup fermato")
@@ -325,7 +272,6 @@ data class CleanupStats(
     val lastCleanup: Long = 0L
 ) {
     fun getHealthScore(): Int {
-        // Calcola un punteggio di "salute" del sistema notifiche
         val score = when {
             totalNotifications == 0 -> 100
             totalNotifications > 100 -> 20

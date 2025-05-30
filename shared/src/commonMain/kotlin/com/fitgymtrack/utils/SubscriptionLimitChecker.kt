@@ -15,7 +15,7 @@ object SubscriptionLimitChecker {
      * @return Triple(limitReached, currentCount, maxAllowed)
      */
     suspend fun canCreateWorkout(): Triple<Boolean, Int, Int?> {
-        return withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.Default) {
             val result = repository.checkResourceLimits("max_workouts")
 
             result.fold(
@@ -40,7 +40,7 @@ object SubscriptionLimitChecker {
      * @return Triple(limitReached, currentCount, maxAllowed)
      */
     suspend fun canCreateCustomExercise(): Triple<Boolean, Int, Int?> {
-        return withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.Default) {
             val result = repository.checkResourceLimits("max_custom_exercises")
 
             result.fold(

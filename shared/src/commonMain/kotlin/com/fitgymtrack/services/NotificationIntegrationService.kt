@@ -11,27 +11,28 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.*
 import kotlin.time.Duration.Companion.days
 
 /**
  * Servizio per l'integrazione automatica delle notifiche
- * Sostituisce i banner esistenti con notifiche centralizzate
  */
 class NotificationIntegrationService private constructor(
     private val context: PlatformContext
 ) {
 
     private val TAG = "NotificationIntegrationService"
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val notificationManager = NotificationManager.getInstance(context)
 
     companion object {
-        @Volatile
         private var INSTANCE: NotificationIntegrationService? = null
+        private val mutex = Mutex()
 
-        fun getInstance(context: PlatformContext): NotificationIntegrationService {
-            return INSTANCE ?: synchronized(this) {
+        suspend fun getInstance(context: PlatformContext): NotificationIntegrationService {
+            return mutex.withLock {
                 INSTANCE ?: NotificationIntegrationService(context)
                     .also { INSTANCE = it }
             }
@@ -40,10 +41,6 @@ class NotificationIntegrationService private constructor(
 
     // === SUBSCRIPTION NOTIFICATIONS ===
 
-    /**
-     * Controlla e crea notifiche per subscription scadute/in scadenza
-     * SOSTITUISCE: SubscriptionExpiredBanner + SubscriptionExpiryWarningBanner
-     */
     fun checkSubscriptionStatus(subscription: Subscription?) {
         if (subscription == null) return
 
@@ -51,23 +48,19 @@ class NotificationIntegrationService private constructor(
             try {
                 logDebug(TAG, "🔍 Controllo stato subscription: ${subscription.planName}")
 
-                // Solo per piani a pagamento
                 if (subscription.price > 0.0 && subscription.end_date != null) {
                     val daysRemaining = calculateDaysRemaining(subscription.end_date)
 
                     when {
                         daysRemaining < 0 -> {
-                            // Subscription SCADUTA
-                            logDebug(TAG, "🚨 Subscription scaduta da ${Math.abs(daysRemaining)} giorni")
+                            logDebug(TAG, "🚨 Subscription scaduta da ${kotlin.math.abs(daysRemaining)} giorni")
                             createSubscriptionExpiredNotification(subscription.planName)
                         }
                         daysRemaining == 0 -> {
-                            // Scade OGGI
                             logDebug(TAG, "⚠️ Subscription scade oggi")
                             createSubscriptionExpiryNotification(0, subscription.planName)
                         }
                         daysRemaining in 1..7 -> {
-                            // Scade tra 1-7 giorni
                             logDebug(TAG, "⚠️ Subscription scade tra $daysRemaining giorni")
                             createSubscriptionExpiryNotification(daysRemaining, subscription.planName)
                         }
@@ -83,10 +76,6 @@ class NotificationIntegrationService private constructor(
         }
     }
 
-    /**
-     * Crea notifica per subscription scaduta
-     * SOSTITUISCE: SubscriptionExpiredBanner
-     */
     private fun createSubscriptionExpiredNotification(planName: String) {
         notificationManager.createNotification(
             type = NotificationType.SUBSCRIPTION_EXPIRED,
@@ -94,10 +83,6 @@ class NotificationIntegrationService private constructor(
         )
     }
 
-    /**
-     * Crea notifica per subscription in scadenza
-     * SOSTITUISCE: SubscriptionExpiryWarningBanner
-     */
     private fun createSubscriptionExpiryNotification(daysRemaining: Int, planName: String) {
         notificationManager.createNotification(
             type = NotificationType.SUBSCRIPTION_EXPIRY,
@@ -110,10 +95,6 @@ class NotificationIntegrationService private constructor(
 
     // === LIMIT NOTIFICATIONS ===
 
-    /**
-     * Controlla e crea notifiche per limiti raggiunti
-     * SOSTITUISCE: SubscriptionLimitBanner
-     */
     fun checkResourceLimits(
         resourceType: String,
         currentCount: Int,
@@ -135,10 +116,6 @@ class NotificationIntegrationService private constructor(
         }
     }
 
-    /**
-     * Crea notifica per limite raggiunto
-     * SOSTITUISCE: SubscriptionLimitBanner
-     */
     private fun createLimitReachedNotification(resourceType: String, maxAllowed: Int) {
         notificationManager.createNotification(
             type = NotificationType.LIMIT_REACHED,
@@ -151,9 +128,6 @@ class NotificationIntegrationService private constructor(
 
     // === WORKOUT NOTIFICATIONS ===
 
-    /**
-     * Crea notifica per allenamento completato
-     */
     fun notifyWorkoutCompleted(
         workoutName: String,
         duration: Long,
@@ -178,9 +152,6 @@ class NotificationIntegrationService private constructor(
         }
     }
 
-    /**
-     * Crea notifica per traguardo raggiunto
-     */
     fun notifyAchievement(
         achievementTitle: String,
         achievementDescription: String
@@ -205,9 +176,6 @@ class NotificationIntegrationService private constructor(
 
     // === APP LIFECYCLE NOTIFICATIONS ===
 
-    /**
-     * Controlla aggiornamenti app e crea notifica se disponibile
-     */
     fun checkAppUpdates() {
         scope.launch {
             try {
@@ -220,9 +188,6 @@ class NotificationIntegrationService private constructor(
         }
     }
 
-    /**
-     * Crea notifica di benvenuto per nuovi utenti
-     */
     fun notifyWelcomeMessage(user: User) {
         scope.launch {
             try {
@@ -243,11 +208,6 @@ class NotificationIntegrationService private constructor(
         }
     }
 
-    // === CLEANUP & MAINTENANCE ===
-
-    /**
-     * Avvia pulizia automatica delle notifiche
-     */
     fun startPeriodicCleanup() {
         scope.launch {
             try {
@@ -260,15 +220,11 @@ class NotificationIntegrationService private constructor(
         }
     }
 
-    /**
-     * Inizializza il servizio con controlli periodici
-     */
     fun initialize() {
         scope.launch {
             try {
                 logDebug(TAG, "🚀 Inizializzazione NotificationIntegrationService")
 
-                // Avvia controlli periodici
                 checkAppUpdates()
                 startPeriodicCleanup()
 
@@ -280,26 +236,16 @@ class NotificationIntegrationService private constructor(
         }
     }
 
-    // === UTILITY METHODS ===
-
-    /**
-     * Calcola giorni rimanenti da una data string
-     * FIXED: Usa kotlinx.datetime invece di SimpleDateFormat
-     */
     private fun calculateDaysRemaining(endDateString: String): Int {
         return try {
-            // Prova a parsare diversi formati di data
             val endDate = try {
-                // Formato standard: "yyyy-MM-dd HH:mm:ss"
                 val dateTime = if (endDateString.contains(" ")) {
                     endDateString.replace(" ", "T") + "Z"
                 } else {
-                    // Formato solo data: "yyyy-MM-dd"
                     "${endDateString}T00:00:00Z"
                 }
                 Instant.parse(dateTime)
             } catch (e: Exception) {
-                // Fallback: prova a parsare come LocalDate
                 try {
                     val localDate = LocalDate.parse(endDateString.split(" ")[0])
                     localDate.atTime(0, 0).toInstant(TimeZone.UTC)
@@ -320,13 +266,8 @@ class NotificationIntegrationService private constructor(
         }
     }
 
-    /**
-     * Verifica se una notifica di un certo tipo esiste già
-     */
     private suspend fun notificationExists(type: NotificationType): Boolean {
         return try {
-            // Implementazione per verificare se esiste già una notifica di questo tipo
-            // Per ora ritorna false per permettere sempre nuove notifiche
             false
         } catch (e: Exception) {
             logError(TAG, "❌ Errore verifica notifica esistente: ${e.message}")
@@ -334,9 +275,6 @@ class NotificationIntegrationService private constructor(
         }
     }
 
-    /**
-     * Logging dettagliato per debugging
-     */
     fun logStatus() {
         scope.launch {
             try {

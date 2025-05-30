@@ -1,8 +1,10 @@
 package com.fitgymtrack.repository
 
-import android.util.Log
+
 import com.fitgymtrack.api.ApiClient
 import com.fitgymtrack.models.Subscription
+import com.fitgymtrack.platform.logDebug
+import com.fitgymtrack.platform.logError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -17,9 +19,9 @@ class SubscriptionRepository {
      * Recupera l'abbonamento corrente dell'utente
      */
     suspend fun getCurrentSubscription(): Result<Subscription> {
-        return withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.Default) {
             try {
-                Log.d(TAG, "Recupero abbonamento corrente")
+                logDebug(TAG, "Recupero abbonamento corrente")
                 val response = apiService.getCurrentSubscription()
 
                 if (response.success && response.data?.subscription != null) {
@@ -43,14 +45,14 @@ class SubscriptionRepository {
                         end_date = apiSubscription.end_date
                     )
 
-                    Log.d(TAG, "Abbonamento recuperato con successo: ${subscription.planName}")
+                    logDebug(TAG, "Abbonamento recuperato con successo: ${subscription.planName}")
                     Result.success(subscription)
                 } else {
-                    Log.e(TAG, "Errore nel recupero dell'abbonamento: ${response.message}")
+                    logError(TAG, "Errore nel recupero dell'abbonamento: ${response.message}")
                     Result.failure(Exception(response.message ?: "Errore sconosciuto"))
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Eccezione nel recupero dell'abbonamento: ${e.message}", e)
+                logError(TAG, "Eccezione nel recupero dell'abbonamento: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -60,9 +62,9 @@ class SubscriptionRepository {
      * NUOVO: Controlla le subscription scadute tramite API
      */
     suspend fun checkExpiredSubscriptions(): Result<Map<String, Any>> {
-        return withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.Default) {
             try {
-                Log.d(TAG, "Controllo subscription scadute")
+                logDebug(TAG, "Controllo subscription scadute")
 
                 // Chiamata al nuovo endpoint per controllare le scadenze
                 val response = apiService.checkExpiredSubscriptions()
@@ -77,14 +79,14 @@ class SubscriptionRepository {
                         "updated_count" to updatedCount
                     )
 
-                    Log.d(TAG, "Controllo scadenze completato: $updatedCount aggiornamenti")
+                    logDebug(TAG, "Controllo scadenze completato: $updatedCount aggiornamenti")
                     Result.success(resultData)
                 } else {
-                    Log.e(TAG, "Errore nel controllo scadenze: ${response.message}")
+                    logError(TAG, "Errore nel controllo scadenze: ${response.message}")
                     Result.failure(Exception(response.message ?: "Errore nel controllo scadenze"))
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Eccezione nel controllo scadenze: ${e.message}", e)
+                logError(TAG, "Eccezione nel controllo scadenze: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -94,9 +96,9 @@ class SubscriptionRepository {
      * Verifica i limiti di utilizzo per un determinato tipo di risorsa
      */
     suspend fun checkResourceLimits(resourceType: String): Result<Map<String, Any>> {
-        return withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.Default) {
             try {
-                Log.d(TAG, "Verifica limiti per: $resourceType")
+                logDebug(TAG, "Verifica limiti per: $resourceType")
                 val response = apiService.checkResourceLimits(resourceType)
 
                 if (response.success && response.data != null) {
@@ -121,14 +123,14 @@ class SubscriptionRepository {
                         limitData["days_remaining"] = -1
                     }
 
-                    Log.d(TAG, "Limiti verificati: $limitData")
+                    logDebug(TAG, "Limiti verificati: $limitData")
                     Result.success(limitData.toMap()) // Conversione esplicita a Map immutabile
                 } else {
-                    Log.e(TAG, "Errore nella verifica dei limiti: ${response.message}")
+                    logError(TAG, "Errore nella verifica dei limiti: ${response.message}")
                     Result.failure(Exception(response.message ?: "Errore sconosciuto"))
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Eccezione nella verifica dei limiti: ${e.message}", e)
+                logError(TAG, "Eccezione nella verifica dei limiti: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -138,9 +140,9 @@ class SubscriptionRepository {
      * Aggiorna il piano di abbonamento
      */
     suspend fun updatePlan(planId: Int): Result<Map<String, Any>> {
-        return withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.Default) {
             try {
-                Log.d(TAG, "Aggiornamento al piano ID: $planId")
+                logDebug(TAG, "Aggiornamento al piano ID: $planId")
                 val response = apiService.updatePlan(com.fitgymtrack.api.UpdatePlanRequest(planId))
 
                 if (response.success && response.data != null) {
@@ -150,14 +152,14 @@ class SubscriptionRepository {
                         "plan_name" to response.data.plan_name
                     )
 
-                    Log.d(TAG, "Piano aggiornato con successo: $resultData")
+                    logDebug(TAG, "Piano aggiornato con successo: $resultData")
                     Result.success(resultData)
                 } else {
-                    Log.e(TAG, "Errore nell'aggiornamento del piano: ${response.message}")
+                    logError(TAG, "Errore nell'aggiornamento del piano: ${response.message}")
                     Result.failure(Exception(response.message ?: "Errore sconosciuto"))
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Eccezione nell'aggiornamento del piano: ${e.message}", e)
+                logError(TAG, "Eccezione nell'aggiornamento del piano: ${e.message}")
                 Result.failure(e)
             }
         }

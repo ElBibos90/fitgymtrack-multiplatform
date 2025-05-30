@@ -17,6 +17,9 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
 
     sourceSets {
         val commonMain by getting {
@@ -26,7 +29,7 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
 
                 implementation("io.ktor:ktor-client-core:2.3.9")
-                implementation("io.ktor:ktor-client-okhttp:2.3.9")
+
                 implementation("io.ktor:ktor-client-logging:2.3.9")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.9")
 				
@@ -51,6 +54,7 @@ kotlin {
 				implementation("androidx.core:core-ktx:1.12.0")
                 implementation("androidx.compose.ui:ui:1.6.4")
                 implementation("androidx.compose.material:material:1.6.4")
+                implementation("io.ktor:ktor-client-okhttp:2.3.9")
 
                 implementation("com.squareup.retrofit2:retrofit:2.11.0")
                 implementation("com.squareup.retrofit2:converter-gson:2.11.0")
@@ -63,6 +67,12 @@ kotlin {
 
                 implementation("androidx.datastore:datastore-preferences-core:1.1.7")
                 implementation("androidx.datastore:datastore-preferences:1.1.7")
+            }
+        }
+
+        val iosMain by creating {
+            dependencies {
+                implementation("io.ktor:ktor-client-darwin:2.3.9")
             }
         }
 

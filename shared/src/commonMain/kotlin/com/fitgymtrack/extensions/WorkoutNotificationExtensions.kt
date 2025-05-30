@@ -17,7 +17,7 @@ import kotlinx.coroutines.withContext
  */
 object WorkoutNotificationExtensions {
 
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scope = CoroutineScope(Dispatchers.Default  + SupervisorJob())
     private const val TAG = "WorkoutNotificationExt"
 
     /**
@@ -196,7 +196,7 @@ object NotificationHelper {
      * Quick method per notificare subscription issues
      */
     fun checkSubscriptionAndNotify(context: PlatformContext) {
-        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+        CoroutineScope(Dispatchers.Default  + SupervisorJob()).launch {
             try {
                 val service = NotificationIntegrationService.getInstance(context)
                 service.checkAppUpdates()
@@ -211,7 +211,7 @@ object NotificationHelper {
      * Test method per creare notifiche di esempio
      */
     fun createTestNotifications(context: PlatformContext) {
-        CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+        CoroutineScope(Dispatchers.Default  + SupervisorJob()).launch {
             try {
                 val service = NotificationIntegrationService.getInstance(context)
 
