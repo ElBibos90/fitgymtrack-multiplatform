@@ -1,221 +1,107 @@
-// Crea questo file: app/src/main/java/com/fitgymtrack/app/repository/FeedbackRepository.kt
 package com.fitgymtrack.repository
 
-import android.content.Context
-import android.net.Uri
-import android.util.Log
 import com.fitgymtrack.api.ApiClient
-import com.fitgymtrack.models.DeviceInfo
-import com.fitgymtrack.models.Feedback
-import com.fitgymtrack.models.FeedbackRequest
-import com.fitgymtrack.models.FeedbackResponse
-import com.fitgymtrack.models.FeedbackSeverity
-import com.fitgymtrack.models.FeedbackType
-import com.fitgymtrack.models.LocalAttachment
-import com.fitgymtrack.utils.DeviceInfoUtils
-import com.fitgymtrack.utils.FileAttachmentManager
-import com.google.gson.Gson
+import com.fitgymtrack.models.*
+import com.fitgymtrack.platform.logDebug
+import com.fitgymtrack.platform.logError
+import io.ktor.client.request.forms.*
+import io.ktor.http.*
+import io.ktor.http.content.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 
-class FeedbackRepository(private val context: Context? = null) {
+class FeedbackRepository {
 
     private val apiService = ApiClient.feedbackApiService
-    private val gson = Gson()
 
-    /**
-     * Invia un feedback con possibili allegati
-     */
+    // ======== Invio feedback semplice (senza allegati) ========
     suspend fun submitFeedback(
         type: FeedbackType,
         title: String,
         description: String,
         email: String,
         severity: FeedbackSeverity = FeedbackSeverity.MEDIUM,
-        attachments: List<LocalAttachment> = emptyList()
+        deviceInfo: DeviceInfo
     ): Result<FeedbackResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("FeedbackRepository", "Invio feedback: tipo=$type, titolo=$title, allegati=${attachments.size}")
-
-                val deviceInfo = collectDeviceInfo()
-                Log.d("FeedbackRepository", "Device info raccolte: $deviceInfo")
-
-                if (attachments.isEmpty()) {
-                    // Invio senza allegati
-                    return@withContext submitFeedbackWithoutAttachments(
-                        type, title, description, email, severity, deviceInfo
-                    )
-                } else {
-                    // Invio con allegati
-                    return@withContext submitFeedbackWithAttachments(
-                        type, title, description, email, severity, deviceInfo, attachments
-                    )
-                }
-
+                val feedbackRequest = FeedbackRequest(
+                    type = type.value,
+                    title = title,
+                    description = description,
+                    email = email,
+                    severity = severity.value,
+                    deviceInfo = deviceInfo
+                )
+                val response = apiService.submitFeedback(feedbackRequest)
+                Result.success(response)
             } catch (e: Exception) {
-                Log.e("FeedbackRepository", "Errore invio feedback: ${e.message}", e)
+                logError("FeedbackRepository", "Errore invio feedback: ${e.message}")
                 Result.failure(e)
             }
         }
     }
 
-    /**
-     * Invia feedback senza allegati
-     */
-    private suspend fun submitFeedbackWithoutAttachments(
+    // ======== Invio feedback con allegati ========
+    suspend fun submitFeedbackWithAttachments(
         type: FeedbackType,
         title: String,
         description: String,
         email: String,
-        severity: FeedbackSeverity,
+        severity: FeedbackSeverity = FeedbackSeverity.MEDIUM,
+        attachments: List<LocalAttachment> = emptyList(),
         deviceInfo: DeviceInfo
     ): Result<FeedbackResponse> {
-        val feedbackRequest = FeedbackRequest(
-            type = type.value,
-            title = title,
-            description = description,
-            email = email,
-            severity = severity.value,
-            deviceInfo = deviceInfo
-        )
+        return withContext(Dispatchers.IO) {
+            try {
+                val formData = formData {
+                    append("type", type.value)
+                    append("title", title)
+                    append("description", description)
+                    append("email", email)
+                    append("severity", severity.value)
+                    append("device_info", deviceInfo.toString())
 
-        Log.d("FeedbackRepository", "Request senza allegati: $feedbackRequest")
-
-        val response = apiService.submitFeedback(feedbackRequest)
-        Log.d("FeedbackRepository", "Risposta feedback: $response")
-
-        return Result.success(response)
-    }
-
-    /**
-     * Invia feedback con allegati
-     */
-    private suspend fun submitFeedbackWithAttachments(
-        type: FeedbackType,
-        title: String,
-        description: String,
-        email: String,
-        severity: FeedbackSeverity,
-        deviceInfo: DeviceInfo,
-        attachments: List<LocalAttachment>
-    ): Result<FeedbackResponse> {
-        if (context == null) {
-            return Result.failure(Exception("Context necessario per gli allegati"))
-        }
-
-        try {
-            // Prepara i campi del form
-            val typeBody = type.value.toRequestBody("text/plain".toMediaTypeOrNull())
-            val titleBody = title.toRequestBody("text/plain".toMediaTypeOrNull())
-            val descriptionBody = description.toRequestBody("text/plain".toMediaTypeOrNull())
-            val emailBody = email.toRequestBody("text/plain".toMediaTypeOrNull())
-            val severityBody = severity.value.toRequestBody("text/plain".toMediaTypeOrNull())
-            val deviceInfoBody = gson.toJson(deviceInfo).toRequestBody("application/json".toMediaTypeOrNull())
-
-            // Prepara gli allegati
-            val attachmentParts = mutableListOf<MultipartBody.Part>()
-
-            attachments.forEach { attachment ->
-                try {
-                    val uri = Uri.parse(attachment.uri)
-                    val file = FileAttachmentManager.copyFileToCache(context, uri, attachment.name)
-
-                    if (file != null && file.exists()) {
-                        val requestBody = file.asRequestBody(attachment.mimeType.toMediaTypeOrNull())
-                        val part = MultipartBody.Part.createFormData(
-                            "attachments[]",
-                            attachment.name,
-                            requestBody
+                    attachments.forEach { attachment ->
+                        append(
+                            "attachments",
+                            attachment.data,
+                            Headers.build {
+                                append(HttpHeaders.ContentDisposition, "filename=\"${attachment.name}\"")
+                            }
                         )
-                        attachmentParts.add(part)
-                        Log.d("FeedbackRepository", "Allegato preparato: ${attachment.name}")
-                    } else {
-                        Log.w("FeedbackRepository", "Impossibile preparare allegato: ${attachment.name}")
                     }
-                } catch (e: Exception) {
-                    Log.e("FeedbackRepository", "Errore preparazione allegato ${attachment.name}: ${e.message}")
                 }
+                val response = apiService.submitFeedbackWithAttachments(formData)
+                Result.success(response)
+            } catch (e: Exception) {
+                logError("FeedbackRepository", "Errore invio feedback con allegati: ${e.message}")
+                Result.failure(e)
             }
-
-            Log.d("FeedbackRepository", "Invio feedback con ${attachmentParts.size} allegati")
-
-            val response = apiService.submitFeedbackWithAttachments(
-                type = typeBody,
-                title = titleBody,
-                description = descriptionBody,
-                email = emailBody,
-                severity = severityBody,
-                deviceInfo = deviceInfoBody,
-                attachments = attachmentParts
-            )
-
-            // Pulisci file temporanei
-            FileAttachmentManager.cleanupTempFiles(context)
-
-            Log.d("FeedbackRepository", "Risposta feedback con allegati: $response")
-            return Result.success(response)
-
-        } catch (e: Exception) {
-            Log.e("FeedbackRepository", "Errore invio feedback con allegati: ${e.message}", e)
-            // Pulisci file temporanei anche in caso di errore
-            context?.let { FileAttachmentManager.cleanupTempFiles(it) }
-            return Result.failure(e)
         }
     }
 
-    /**
-     * Recupera tutti i feedback (solo per admin)
-     */
+    // ======== Recupero feedback (solo admin) ========
     @Suppress("UNCHECKED_CAST")
     suspend fun getFeedbacks(): Result<List<Feedback>> {
         return withContext(Dispatchers.IO) {
             try {
                 val response = apiService.getFeedbacks()
-
                 if (response["success"] as? Boolean == true) {
-                    response["feedbacks"] as? List<Map<String, Any>> ?: emptyList()
-
-                    // Qui dovresti convertire i Map in oggetti Feedback
-                    // Per ora restituiamo lista vuota
-                    Result.success(emptyList<Feedback>())
+                    // TODO: converti la lista di Map in oggetti Feedback se necessario
+                    Result.success(emptyList())
                 } else {
                     val message = response["message"] as? String ?: "Errore sconosciuto"
                     Result.failure(Exception(message))
                 }
             } catch (e: Exception) {
-                Log.e("FeedbackRepository", "Errore recupero feedback: ${e.message}", e)
+                logError("FeedbackRepository", "Errore recupero feedback: ${e.message}")
                 Result.failure(e)
             }
         }
     }
 
-    /**
-     * Raccoglie informazioni del dispositivo automaticamente
-     */
-    private fun collectDeviceInfo(): DeviceInfo {
-        return if (context != null) {
-            DeviceInfoUtils.collectDeviceInfo(context)
-        } else {
-            // Fallback se non abbiamo il context
-            DeviceInfo(
-                androidVersion = "Unknown",
-                deviceModel = "Unknown",
-                deviceManufacturer = "Unknown",
-                appVersion = "Unknown",
-                screenSize = "Unknown",
-                apiLevel = 0
-            )
-        }
-    }
-
-    /**
-     * Valida i dati del feedback prima dell'invio
-     */
+    // ======== Validazione feedback ========
     fun validateFeedback(
         title: String,
         description: String,
@@ -227,24 +113,15 @@ class FeedbackRepository(private val context: Context? = null) {
         if (title.isBlank()) {
             errors.add("Il titolo è obbligatorio")
         }
-
         if (description.isBlank()) {
             errors.add("La descrizione è obbligatoria")
-        } else if (description.length < 10) {
-            errors.add("La descrizione è troppo breve (minimo 10 caratteri)")
         }
-
-        if (email.isBlank()) {
-            errors.add("L'email è obbligatoria")
-        } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            errors.add("Formato email non valido")
+        if (email.isBlank() || !email.contains("@")) {
+            errors.add("Email non valida")
         }
-
-        // Valida allegati
-        if (attachments.isNotEmpty()) {
-            val attachmentValidation = FileAttachmentManager.validateAttachments(attachments)
-            if (!attachmentValidation.isValid) {
-                errors.addAll(attachmentValidation.errors)
+        attachments.forEach {
+            if (it.name.isBlank() || it.data.isEmpty()) {
+                errors.add("Allegato non valido")
             }
         }
 
@@ -255,9 +132,6 @@ class FeedbackRepository(private val context: Context? = null) {
     }
 }
 
-/**
- * Risultato della validazione
- */
 data class ValidationResult(
     val isValid: Boolean,
     val errors: List<String>

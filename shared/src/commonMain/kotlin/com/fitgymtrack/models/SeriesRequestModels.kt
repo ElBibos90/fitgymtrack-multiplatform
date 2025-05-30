@@ -1,6 +1,7 @@
 package com.fitgymtrack.models
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Modelli per le richieste di eliminazione e aggiornamento delle serie
@@ -9,20 +10,22 @@ import com.google.gson.annotations.SerializedName
 /**
  * Richiesta per eliminare una serie completata
  */
+@Serializable
 data class DeleteSeriesRequest(
-    @SerializedName("serie_id")
+    @SerialName("serie_id")
     val serieId: String
 )
 
 /**
  * Richiesta per aggiornare una serie completata
  */
+@Serializable
 data class UpdateSeriesRequest(
-    @SerializedName("serie_id")
+    @SerialName("serie_id")
     val serieId: String,
     val peso: Float,
     val ripetizioni: Int,
-    @SerializedName("tempo_recupero")
+    @SerialName("tempo_recupero")
     val tempoRecupero: Int? = null,
     val note: String? = null
 )
@@ -30,6 +33,7 @@ data class UpdateSeriesRequest(
 /**
  * Risposta generica per le operazioni sulle serie
  */
+@Serializable
 data class SeriesOperationResponse(
     val success: Boolean,
     val message: String

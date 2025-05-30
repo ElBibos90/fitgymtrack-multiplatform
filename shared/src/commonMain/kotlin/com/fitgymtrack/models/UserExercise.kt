@@ -1,23 +1,25 @@
 package com.fitgymtrack.models
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Rappresenta un esercizio personalizzato creato dall'utente
  */
+@Serializable
 data class UserExercise(
     val id: Int,
     val nome: String,
-    @SerializedName("gruppo_muscolare")
+    @SerialName("gruppo_muscolare")
     val gruppoMuscolare: String,
     val descrizione: String? = null,
     val attrezzatura: String? = null,
-    @SerializedName("is_isometric")
+    @SerialName("is_isometric")
     val isIsometricInt: Int = 0,
-    @SerializedName("created_by_user_id")
+    @SerialName("created_by_user_id")
     val createdByUserId: Int,
     val status: String = "pending_review",
-    @SerializedName("immagine_url")
+    @SerialName("immagine_url")
     val immagineUrl: String? = null
 ) {
     // Proprietà calcolata per convertire Int a Boolean
@@ -28,15 +30,16 @@ data class UserExercise(
 /**
  * Classe per la richiesta di creazione di un nuovo esercizio
  */
+@Serializable
 data class CreateUserExerciseRequest(
     val nome: String,
-    @SerializedName("gruppo_muscolare")
+    @SerialName("gruppo_muscolare")
     val gruppoMuscolare: String,
     val descrizione: String? = null,
     val attrezzatura: String? = null,
-    @SerializedName("is_isometric")
+    @SerialName("is_isometric")
     val isIsometric: Boolean = false,
-    @SerializedName("created_by_user_id")
+    @SerialName("created_by_user_id")
     val createdByUserId: Int,
     val status: String = "pending_review"
 )
@@ -44,32 +47,35 @@ data class CreateUserExerciseRequest(
 /**
  * Classe per la richiesta di aggiornamento di un esercizio esistente
  */
+@Serializable
 data class UpdateUserExerciseRequest(
     val id: Int,
     val nome: String,
-    @SerializedName("gruppo_muscolare")
+    @SerialName("gruppo_muscolare")
     val gruppoMuscolare: String,
     val descrizione: String? = null,
     val attrezzatura: String? = null,
-    @SerializedName("is_isometric")
+    @SerialName("is_isometric")
     val isIsometric: Boolean = false,
-    @SerializedName("user_id")
+    @SerialName("user_id")
     val userId: Int
 )
 
 /**
  * Risposta generica per le operazioni sugli esercizi
  */
+@Serializable
 data class UserExerciseResponse(
     val success: Boolean,
     val message: String,
-    @SerializedName("exercise_id")
+    @SerialName("exercise_id")
     val exerciseId: Int? = null
 )
 
 /**
  * Risposta per l'elenco degli esercizi
  */
+@Serializable
 data class UserExercisesResponse(
     val success: Boolean,
     val exercises: List<UserExercise>? = null,
@@ -79,9 +85,10 @@ data class UserExercisesResponse(
 /**
  * Richiesta per l'eliminazione di un esercizio
  */
+@Serializable
 data class DeleteUserExerciseRequest(
-    @SerializedName("exercise_id")
+    @SerialName("exercise_id")
     val exerciseId: Int,
-    @SerializedName("user_id")
+    @SerialName("user_id")
     val userId: Int
 )

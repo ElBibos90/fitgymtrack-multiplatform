@@ -126,14 +126,11 @@ class ActiveWorkoutRepository {
      * Elimina un allenamento
      */
     suspend fun deleteWorkout(workoutId: Int): Result<SeriesOperationResponse> {
-
         return withContext(Dispatchers.IO) {
             try {
-                val response = apiService.deleteWorkout(mapOf("allenamento_id" to workoutId))
-
+                val response = apiService.deleteWorkout(workoutId)
                 Result.success(response)
             } catch (e: Exception) {
-
                 Result.failure(e)
             }
         }

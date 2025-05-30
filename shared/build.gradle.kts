@@ -2,15 +2,15 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.compose.multiplatform)
-    alias(libs.plugins.kotlin.serialization)
+    id("org.jetbrains.kotlin.multiplatform")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.compose")
+    id("com.android.library") // in shared
 }
 
+
 kotlin {
-    // === ANDROID TARGET ===
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
@@ -18,89 +18,70 @@ kotlin {
         }
     }
 
-    // === iOS TARGETS DISABLED FOR WINDOWS ===
-    // TODO: Re-enable in FASE 5 on Mac/cloud environment
-
-    // === SOURCE SETS CONFIGURATION ===
     sourceSets {
-        // === COMMON MAIN (MINIMAL) ===
-        commonMain.dependencies {
-            // === COMPOSE MULTIPLATFORM BASIC ===
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
+        val commonMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
 
-            // === COROUTINES ===
-            implementation(libs.kotlinx.coroutines.core)
+                implementation("io.ktor:ktor-client-core:2.3.9")
+                implementation("io.ktor:ktor-client-okhttp:2.3.9")
+                implementation("io.ktor:ktor-client-logging:2.3.9")
+                implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.9")
 
-            // === SERIALIZATION ===
-            implementation(libs.kotlinx.serialization.json)
 
-            // === DATE/TIME ===
-            implementation(libs.kotlinx.datetime)
+
+                implementation("org.jetbrains.compose.runtime:runtime:1.7.3")
+                implementation("org.jetbrains.compose.foundation:foundation:1.7.3")
+                implementation("org.jetbrains.compose.material3:material3:1.7.3")
+                implementation("org.jetbrains.compose.ui:ui:1.7.3")
+            }
         }
 
-        // === ANDROID MAIN ===
-        androidMain.dependencies {
-            // === ANDROID COROUTINES ===
-            implementation(libs.kotlinx.coroutines.android)
+        val androidMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+                implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.0")
+                implementation("androidx.activity:activity-compose:1.10.1")
+                implementation("androidx.navigation:navigation-compose:2.9.0")
+                implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.0")
+				implementation("androidx.core:core-ktx:1.12.0")
+                implementation("androidx.compose.ui:ui:1.6.4")
+                implementation("androidx.compose.material:material:1.6.4")
 
-            // === ANDROID CORE ===
-            implementation(libs.androidx.core.ktx)
-            implementation(libs.androidx.lifecycle.runtime.ktx)
-            implementation(libs.androidx.activity.compose)
+                implementation("com.squareup.retrofit2:retrofit:2.11.0")
+                implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+                implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+                implementation("com.google.code.gson:gson:2.11.0")
 
-            // === NAVIGATION (ANDROID ONLY FOR NOW) ===
-            implementation(libs.androidx.navigation.compose)
+                implementation("io.ktor:ktor-client-android:3.0.3")
 
-            // === LIFECYCLE & VIEWMODEL (ANDROID ONLY FOR NOW) ===
-            implementation(libs.androidx.lifecycle.viewmodel.compose)
+                implementation("io.coil-kt:coil-compose:2.7.0")
 
-            // === NETWORKING (RETROFIT + KTOR) ===
-            implementation(libs.retrofit)
-            implementation(libs.retrofit.converter.gson)
-            implementation(libs.okhttp.logging.interceptor)
-            implementation(libs.gson)
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.android)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.serialization.kotlinx.json)
-
-            // === IMAGE LOADING ===
-            implementation(libs.coil.compose)
-
-            // === DATASTORE ===
-            implementation(libs.androidx.datastore.preferences.core)
-            implementation(libs.androidx.datastore.preferences)
-
-            // === UI COMPONENTS ===
-            implementation(libs.compose.material.dialogs)
-            implementation(libs.compose.numberpicker)
-            implementation(libs.androidx.compose.material3.window.size)
+                implementation("androidx.datastore:datastore-preferences-core:1.1.7")
+                implementation("androidx.datastore:datastore-preferences:1.1.7")
+            }
         }
 
-        // === COMMON TEST ===
-        commonTest.dependencies {
-            implementation(libs.junit)
-            @OptIn(ExperimentalKotlinGradlePluginApi::class)
-            implementation(kotlin("test"))
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation("junit:junit:4.13.2")
+            }
         }
     }
 }
 
-// === ANDROID CONFIGURATION ===
 android {
     namespace = "com.fitgymtrack.app"
     compileSdk = 35
 
-    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    sourceSets["main"].res.srcDirs("src/androidMain/res")
-    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
-
     defaultConfig {
         minSdk = 24
     }
+
+    sourceSets["main"].manifest.srcFile("src/main/AndroidManifest.xml")
 
     packaging {
         resources {
@@ -108,27 +89,16 @@ android {
         }
     }
 
-    buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false
-        }
+    buildFeatures {
+        compose = true
     }
-
-    compileOptions {
+	
+	compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    buildFeatures {
-        compose = true
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.10"
     }
-
-    dependencies {
-        debugImplementation(compose.uiTooling)
-    }
-}
-
-// === COMPOSE CONFIGURATION ===
-compose.experimental {
-    web.application {}
 }

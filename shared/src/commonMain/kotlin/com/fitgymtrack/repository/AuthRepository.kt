@@ -1,13 +1,16 @@
 package com.fitgymtrack.repository
 
-import android.util.Log
 import com.fitgymtrack.api.ApiClient
 import com.fitgymtrack.models.*
 import com.fitgymtrack.platform.logDebug
+import com.fitgymtrack.platform.logError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
+import com.fitgymtrack.api.isSuccessful
+import com.fitgymtrack.api.statusCode
+import com.fitgymtrack.api.bodyAsText
 
 class AuthRepository {
     private val apiService = ApiClient.apiService
@@ -17,17 +20,10 @@ class AuthRepository {
             try {
                 logDebug("AuthRepository", "Tentativo di login per: $username")
                 val loginRequest = LoginRequest(username, password)
-                logDebug("AuthRepository", "Request: $loginRequest")
-
-                val response = apiService.login(
-                    action = "login",
-                    loginRequest = loginRequest
-                )
-
-                logDebug("AuthRepository", "Risposta login: $response")
+                val response = apiService.login(loginRequest)
                 Result.success(response)
             } catch (e: Exception) {
-                Log.e("AuthRepository", "Errore login: ${e.message}", e)
+                logError("AuthRepository", "Errore login: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -36,23 +32,11 @@ class AuthRepository {
     suspend fun register(username: String, password: String, email: String, name: String): Result<RegisterResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = apiService.register(
-                    RegisterRequest(username, password, email, name)
-                )
+                val response = apiService.register(RegisterRequest(username, password, email, name))
                 Result.success(response)
             } catch (e: Exception) {
-                // Gestione specifica dell'errore 409 Conflict
-                if (e is retrofit2.HttpException && e.code() == 409) {
-                    // Creiamo una risposta personalizzata per questo errore
-                    val errorResponse = RegisterResponse(
-                        success = false,
-                        message = "Username o email già in uso. Prova con credenziali diverse."
-                    )
-                    Result.success(errorResponse)
-                } else {
-                    Log.e("AuthRepository", "Errore registrazione: ${e.message}", e)
-                    Result.failure(e)
-                }
+                logError("AuthRepository", "Errore registrazione: ${e.message}")
+                Result.failure(e)
             }
         }
     }
@@ -61,28 +45,25 @@ class AuthRepository {
         return withContext(Dispatchers.IO) {
             try {
                 val resetRequest = PasswordResetRequest(email)
-                val response = apiService.requestPasswordReset(
-                    action = "request",
-                    resetRequest = resetRequest
-                )
+                val response = apiService.requestPasswordReset(resetRequest)
 
-                if (response.isSuccessful) {
-                    val responseBody = response.body()?.string() ?: ""
+                if (response.isSuccessful()) {
+                    val responseBody = response.bodyAsText()
                     logDebug("AuthRepository", "Password reset response: $responseBody")
 
-                    // Verifica se la risposta contiene errori PHP
                     if (responseBody.contains("<b>Warning</b>") ||
                         responseBody.contains("<b>Fatal error</b>") ||
                         responseBody.contains("<br />")) {
 
-                        Log.e("AuthRepository", "Risposta contiene errori PHP: $responseBody")
-                        return@withContext Result.success(PasswordResetResponse(
-                            success = false,
-                            message = "Errore del server. Contatta l'amministratore del sistema."
-                        ))
+                        logError("AuthRepository", "Risposta contiene errori PHP: $responseBody")
+                        return@withContext Result.success(
+                            PasswordResetResponse(
+                                success = false,
+                                message = "Errore del server. Contatta l'amministratore del sistema."
+                            )
+                        )
                     }
 
-                    // Tentiamo di parsare la risposta come JSON
                     try {
                         val jsonObject = JSONObject(responseBody)
                         val success = jsonObject.optBoolean("success", false)
@@ -91,24 +72,27 @@ class AuthRepository {
 
                         Result.success(PasswordResetResponse(success, message, token))
                     } catch (jsonEx: JSONException) {
-                        // Se non è JSON valido, consideriamo la risposta come un messaggio di errore
-                        Log.e("AuthRepository", "Risposta non è JSON valido: $responseBody", jsonEx)
-                        Result.success(PasswordResetResponse(
-                            success = false,
-                            message = "Errore nel formato della risposta. Riprova più tardi."
-                        ))
+                        logError("AuthRepository", "Risposta non è JSON valido: $responseBody")
+                        Result.success(
+                            PasswordResetResponse(
+                                success = false,
+                                message = "Errore nel formato della risposta. Riprova più tardi."
+                            )
+                        )
                     }
                 } else {
-                    val errorMsg = response.errorBody()?.string() ?: "Errore dal server: ${response.code()}"
-                    Log.e("AuthRepository", "Reset password fallito: $errorMsg")
-                    Result.success(PasswordResetResponse(
-                        success = false,
-                        message = "Errore dal server: ${response.code()}"
-                    ))
+                    val errorMsg = "Errore dal server: ${response.statusCode()}"
+                    logError("AuthRepository", "Reset password fallito: $errorMsg")
+                    Result.success(
+                        PasswordResetResponse(
+                            success = false,
+                            message = errorMsg
+                        )
+                    )
                 }
 
             } catch (e: Exception) {
-                Log.e("AuthRepository", "Errore richiesta reset password: ${e.message}", e)
+                logError("AuthRepository", "Errore richiesta reset password: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -117,63 +101,58 @@ class AuthRepository {
     suspend fun confirmPasswordReset(token: String, code: String, newPassword: String): Result<PasswordResetConfirmResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                // Log dettagliati per debugging
                 logDebug("AuthRepository", "Tentativo di reset password con: code=$code, token=$token, lunghezza password=${newPassword.length}")
 
                 val resetConfirmRequest = PasswordResetConfirmRequest(token, code, newPassword)
+                val response = apiService.confirmPasswordReset(resetConfirmRequest)
 
-                // Log della richiesta
-                logDebug("AuthRepository", "Richiesta: action=reset, URL=reset_simple.php")
-
-                val response = apiService.confirmPasswordReset(
-                    action = "reset",
-                    resetConfirmRequest = resetConfirmRequest
-                )
-
-                if (response.isSuccessful) {
-                    val responseBody = response.body()?.string() ?: ""
+                if (response.isSuccessful()) {
+                    val responseBody = response.bodyAsText()
                     logDebug("AuthRepository", "Reset password response: $responseBody")
 
-                    // Verifica se la risposta contiene errori PHP
                     if (responseBody.contains("<b>Warning</b>") ||
                         responseBody.contains("<b>Fatal error</b>") ||
                         responseBody.contains("<br />")) {
 
-                        Log.e("AuthRepository", "Risposta contiene errori PHP: $responseBody")
-                        return@withContext Result.success(PasswordResetConfirmResponse(
-                            success = false,
-                            message = "Errore del server. Contatta l'amministratore del sistema."
-                        ))
+                        logError("AuthRepository", "Risposta contiene errori PHP: $responseBody")
+                        return@withContext Result.success(
+                            PasswordResetConfirmResponse(
+                                success = false,
+                                message = "Errore del server. Contatta l'amministratore del sistema."
+                            )
+                        )
                     }
 
-                    // Tentiamo di parsare la risposta come JSON
                     try {
                         val jsonObject = JSONObject(responseBody)
                         val success = jsonObject.optBoolean("success", false)
                         val message = jsonObject.optString("message", "")
 
                         logDebug("AuthRepository", "Risposta parsata: success=$success, message=$message")
-                        return@withContext Result.success(PasswordResetConfirmResponse(success, message))
+                        Result.success(PasswordResetConfirmResponse(success, message))
                     } catch (jsonEx: JSONException) {
-                        // Se non è JSON valido, consideriamo la risposta come un messaggio di errore
-                        Log.e("AuthRepository", "Risposta non è JSON valido: $responseBody", jsonEx)
-                        return@withContext Result.success(PasswordResetConfirmResponse(
-                            success = false,
-                            message = "Errore nel formato della risposta. Riprova più tardi."
-                        ))
+                        logError("AuthRepository", "Risposta non è JSON valido: $responseBody")
+                        Result.success(
+                            PasswordResetConfirmResponse(
+                                success = false,
+                                message = "Errore nel formato della risposta. Riprova più tardi."
+                            )
+                        )
                     }
                 } else {
-                    val errorMsg = response.errorBody()?.string() ?: "Errore dal server: ${response.code()}"
-                    Log.e("AuthRepository", "Conferma reset password fallito: $errorMsg")
-                    return@withContext Result.success(PasswordResetConfirmResponse(
-                        success = false,
-                        message = "Errore dal server: ${response.code()}"
-                    ))
+                    val errorMsg = "Errore dal server: ${response.statusCode()}"
+                    logError("AuthRepository", "Conferma reset password fallito: $errorMsg")
+                    Result.success(
+                        PasswordResetConfirmResponse(
+                            success = false,
+                            message = errorMsg
+                        )
+                    )
                 }
 
             } catch (e: Exception) {
-                Log.e("AuthRepository", "Errore conferma reset password: ${e.message}", e)
-                return@withContext Result.failure(e)
+                logError("AuthRepository", "Errore conferma reset password: ${e.message}")
+                Result.failure(e)
             }
         }
     }

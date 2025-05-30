@@ -1,210 +1,190 @@
 package com.fitgymtrack.models
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Modello per le statistiche dell'utente
  */
+@Serializable
 data class UserStats(
-    // Statistiche di base
-    @SerializedName("total_workouts")
+    @SerialName("total_workouts")
     val totalWorkouts: Int = 0,
 
-    @SerializedName("total_hours")
+    @SerialName("total_hours")
     val totalHours: Int = 0,
 
-    @SerializedName("current_streak")
+    @SerialName("current_streak")
     val currentStreak: Int = 0,
 
-    @SerializedName("longest_streak")
+    @SerialName("longest_streak")
     val longestStreak: Int = 0,
 
-    @SerializedName("weekly_average")
+    @SerialName("weekly_average")
     val weeklyAverage: Double = 0.0,
 
-    @SerializedName("monthly_average")
+    @SerialName("monthly_average")
     val monthlyAverage: Double = 0.0,
 
-    // Esercizi
-    @SerializedName("favorite_exercise")
+    @SerialName("favorite_exercise")
     val favoriteExercise: String? = null,
 
-    @SerializedName("total_exercises_performed")
+    @SerialName("total_exercises_performed")
     val totalExercisesPerformed: Int = 0,
 
-    @SerializedName("total_sets_completed")
+    @SerialName("total_sets_completed")
     val totalSetsCompleted: Int = 0,
 
-    @SerializedName("total_reps_completed")
+    @SerialName("total_reps_completed")
     val totalRepsCompleted: Int = 0,
 
-    // Progressi peso
-    @SerializedName("weight_progress")
-    val weightProgress: Float? = null, // Percentuale di miglioramento
+    @SerialName("weight_progress")
+    val weightProgress: Float? = null,
 
-    @SerializedName("heaviest_lift")
+    @SerialName("heaviest_lift")
     val heaviestLift: WeightRecord? = null,
 
-    // Statistiche temporali
-    @SerializedName("average_workout_duration")
-    val averageWorkoutDuration: Int = 0, // in minuti
+    @SerialName("average_workout_duration")
+    val averageWorkoutDuration: Int = 0,
 
-    @SerializedName("best_workout_time")
-    val bestWorkoutTime: String? = null, // "morning", "afternoon", "evening"
+    @SerialName("best_workout_time")
+    val bestWorkoutTime: String? = null,
 
-    @SerializedName("most_active_day")
-    val mostActiveDay: String? = null, // "monday", "tuesday", etc.
+    @SerialName("most_active_day")
+    val mostActiveDay: String? = null,
 
-    // Obiettivi e achievement
-    @SerializedName("goals_achieved")
+    @SerialName("goals_achieved")
     val goalsAchieved: Int = 0,
 
-    @SerializedName("personal_records")
+    @SerialName("personal_records")
     val personalRecords: List<PersonalRecord> = emptyList(),
 
-    // Statistiche recenti (ultimi 30 giorni)
-    @SerializedName("recent_workouts")
+    @SerialName("recent_workouts")
     val recentWorkouts: Int = 0,
 
-    @SerializedName("recent_improvements")
+    @SerialName("recent_improvements")
     val recentImprovements: Int = 0,
 
-    // Date importanti
-    @SerializedName("first_workout_date")
+    @SerialName("first_workout_date")
     val firstWorkoutDate: String? = null,
 
-    @SerializedName("last_workout_date")
+    @SerialName("last_workout_date")
     val lastWorkoutDate: String? = null,
 
-    // Consistenza
-    @SerializedName("consistency_score")
-    val consistencyScore: Float = 0.0f, // 0-100
+    @SerialName("consistency_score")
+    val consistencyScore: Float = 0.0f,
 
-    @SerializedName("workout_frequency")
+    @SerialName("workout_frequency")
     val workoutFrequency: WorkoutFrequency? = null
 )
 
-/**
- * Record di peso per un esercizio specifico
- */
+@Serializable
 data class WeightRecord(
-    @SerializedName("exercise_name")
+    @SerialName("exercise_name")
     val exerciseName: String,
 
-    @SerializedName("weight")
+    @SerialName("weight")
     val weight: Double,
 
-    @SerializedName("reps")
+    @SerialName("reps")
     val reps: Int,
 
-    @SerializedName("date")
+    @SerialName("date")
     val date: String
 )
 
-/**
- * Record personale
- */
+@Serializable
 data class PersonalRecord(
-    @SerializedName("exercise_name")
+    @SerialName("exercise_name")
     val exerciseName: String,
 
-    @SerializedName("type")
-    val type: String, // "max_weight", "max_reps", "max_volume"
+    @SerialName("type")
+    val type: String,
 
-    @SerializedName("value")
+    @SerialName("value")
     val value: Double,
 
-    @SerializedName("date_achieved")
+    @SerialName("date_achieved")
     val dateAchieved: String,
 
-    @SerializedName("previous_record")
+    @SerialName("previous_record")
     val previousRecord: Double? = null
 )
 
-/**
- * Frequenza degli allenamenti
- */
+@Serializable
 data class WorkoutFrequency(
-    @SerializedName("weekly_days")
-    val weeklyDays: Map<String, Int> = emptyMap(), // "monday" -> count
+    @SerialName("weekly_days")
+    val weeklyDays: Map<String, Int> = emptyMap(),
 
-    @SerializedName("monthly_weeks")
-    val monthlyWeeks: Map<String, Int> = emptyMap(), // "week1" -> count
+    @SerialName("monthly_weeks")
+    val monthlyWeeks: Map<String, Int> = emptyMap(),
 
-    @SerializedName("hourly_distribution")
-    val hourlyDistribution: Map<Int, Int> = emptyMap() // hour -> count
+    @SerialName("hourly_distribution")
+    val hourlyDistribution: Map<Int, Int> = emptyMap()
 )
 
-/**
- * Risposta API per le statistiche
- */
+@Serializable
 data class UserStatsResponse(
     val success: Boolean,
     val stats: UserStats?,
     val message: String? = null
 )
 
-/**
- * Statistiche aggregate per periodi specifici
- */
+@Serializable
 data class PeriodStats(
-    @SerializedName("period_type")
-    val periodType: String, // "week", "month", "year"
+    @SerialName("period_type")
+    val periodType: String,
 
-    @SerializedName("period_label")
-    val periodLabel: String, // "Questa settimana", "Questo mese", etc.
+    @SerialName("period_label")
+    val periodLabel: String,
 
-    @SerializedName("workouts_count")
+    @SerialName("workouts_count")
     val workoutsCount: Int,
 
-    @SerializedName("total_duration")
-    val totalDuration: Int, // in minuti
+    @SerialName("total_duration")
+    val totalDuration: Int,
 
-    @SerializedName("average_duration")
-    val averageDuration: Int, // in minuti
+    @SerialName("average_duration")
+    val averageDuration: Int,
 
-    @SerializedName("most_trained_muscle_group")
+    @SerialName("most_trained_muscle_group")
     val mostTrainedMuscleGroup: String? = null,
 
-    @SerializedName("improvement_percentage")
+    @SerialName("improvement_percentage")
     val improvementPercentage: Float? = null,
 
-    @SerializedName("new_records")
+    @SerialName("new_records")
     val newRecords: Int = 0
 )
 
-/**
- * Confronto tra periodi
- */
+@Serializable
 data class StatsComparison(
-    @SerializedName("current_period")
+    @SerialName("current_period")
     val currentPeriod: PeriodStats,
 
-    @SerializedName("previous_period")
+    @SerialName("previous_period")
     val previousPeriod: PeriodStats,
 
-    @SerializedName("improvement_percentage")
+    @SerialName("improvement_percentage")
     val improvementPercentage: Float,
 
-    @SerializedName("trend")
-    val trend: String // "improving", "declining", "stable"
+    @SerialName("trend")
+    val trend: String
 )
 
-/**
- * Achievement/Obiettivo
- */
+@Serializable
 data class Achievement(
     val id: Int,
     val name: String,
     val description: String,
-    @SerializedName("icon_name")
+    @SerialName("icon_name")
     val iconName: String,
-    @SerializedName("is_unlocked")
+    @SerialName("is_unlocked")
     val isUnlocked: Boolean,
-    @SerializedName("unlock_date")
+    @SerialName("unlock_date")
     val unlockDate: String? = null,
-    @SerializedName("progress_current")
+    @SerialName("progress_current")
     val progressCurrent: Int = 0,
-    @SerializedName("progress_target")
+    @SerialName("progress_target")
     val progressTarget: Int = 100
 )

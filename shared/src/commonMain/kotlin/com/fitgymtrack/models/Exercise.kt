@@ -1,26 +1,29 @@
 package com.fitgymtrack.models
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 
 /**
  * Modello per rappresentare un esercizio restituito dall'API esercizi.php
  */
+@Serializable
 data class Exercise(
     val id: Int,
     val nome: String,
     val descrizione: String,
-    @SerializedName("immagine_url")
+    // ✅ FIX: @SerializedName → @SerialName
+    @SerialName("immagine_url")
     val immagineUrl: String,
-    @SerializedName("gruppo_muscolare")
+    @SerialName("gruppo_muscolare")
     val gruppoMuscolare: String,
     val attrezzatura: String,
-    @SerializedName("is_isometric")
+    @SerialName("is_isometric")
     val isIsometric: Int = 0, // 0 = false, 1 = true
-    @SerializedName("equipment_type_id")
+    @SerialName("equipment_type_id")
     val equipmentTypeId: Int? = null,
     val status: String? = null
 ) {
-    // Proprietà calcolata per facilitare l'uso
+    // ✅ MANTIENI: Business logic multiplatform
     val isIsometricBool: Boolean
         get() = isIsometric > 0
 }

@@ -1,6 +1,7 @@
 package com.fitgymtrack.platform
 
 import platform.UIKit.UIDevice
+import platform.Foundation.NSBundle
 
 /**
  * iOS implementation - Context placeholder
@@ -22,6 +23,7 @@ actual class Platform {
 actual fun getPlatform(): Platform = Platform()
 
 // === LOGGING FUNCTIONS ===
+
 /**
  * iOS implementation del logging - DEBUG level
  * (usando println per semplicità)
@@ -40,26 +42,19 @@ actual fun platformLogError(tag: String, message: String) {
 }
 
 // === VERSION & DEVICE INFO FUNCTIONS ===
+
 /**
  * iOS implementation - Version name
  */
 actual fun getVersionName(): String {
-    return try {
-        "0.0.1-dev" // TODO: Get from Bundle.main.infoDictionary when available
-    } catch (e: Exception) {
-        "Unknown"
-    }
+    return NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "Unknown"
 }
 
 /**
  * iOS implementation - Version code
  */
 actual fun getVersionCode(): Int {
-    return try {
-        1 // TODO: Get from Bundle.main.infoDictionary when available
-    } catch (e: Exception) {
-        1
-    }
+    return (NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleVersion") as? String)?.toIntOrNull() ?: 1
 }
 
 /**

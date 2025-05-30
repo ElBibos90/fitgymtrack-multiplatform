@@ -42,7 +42,7 @@ actual fun platformLogError(tag: String, message: String) {
  */
 actual fun getVersionName(): String {
     return try {
-        "0.0.1-dev" // TODO: Get from BuildConfig.VERSION_NAME when available
+        AndroidBuildConfig.versionName
     } catch (e: Exception) {
         "Unknown"
     }
@@ -53,7 +53,7 @@ actual fun getVersionName(): String {
  */
 actual fun getVersionCode(): Int {
     return try {
-        1 // TODO: Get from BuildConfig.VERSION_CODE when available
+        AndroidBuildConfig.versionCode
     } catch (e: Exception) {
         1
     }

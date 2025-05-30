@@ -1,7 +1,8 @@
 package com.fitgymtrack.utils
 
-import android.content.Context
-import android.util.Log
+import com.fitgymtrack.platform.PlatformContext
+import com.fitgymtrack.platform.logDebug
+import com.fitgymtrack.platform.logError
 import com.fitgymtrack.enums.NotificationPriority
 import com.fitgymtrack.enums.NotificationSource
 import com.fitgymtrack.enums.NotificationType
@@ -18,10 +19,10 @@ import java.util.concurrent.TimeUnit
 /**
  * Manager centrale per la gestione delle notifiche
  * Sostituisce gradualmente i banner esistenti
- * MODIFICATO: Aggiunto controllo anti-duplicati
+ * MIGRATO: Context → PlatformContext, Log → platform logging
  */
 class NotificationManager private constructor(
-    private val context: Context,
+    private val context: PlatformContext,
     private val repository: NotificationRepository
 ) {
 
@@ -32,33 +33,33 @@ class NotificationManager private constructor(
         @Volatile
         private var INSTANCE: NotificationManager? = null
 
-        fun getInstance(context: Context): NotificationManager {
+        fun getInstance(context: PlatformContext): NotificationManager {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: NotificationManager(
-                    context.applicationContext,
-                    NotificationRepository(context.applicationContext)
+                    context,
+                    NotificationRepository(context)
                 ).also { INSTANCE = it }
             }
         }
 
         // Convenience methods per accesso diretto
-        fun create(context: Context, type: NotificationType, data: Map<String, Any> = emptyMap()) {
+        fun create(context: PlatformContext, type: NotificationType, data: Map<String, Any> = emptyMap()) {
             getInstance(context).createNotification(type, data)
         }
 
-        fun createSubscriptionExpiry(context: Context, daysRemaining: Int, planName: String = "Premium") {
+        fun createSubscriptionExpiry(context: PlatformContext, daysRemaining: Int, planName: String = "Premium") {
             getInstance(context).createSubscriptionExpiryNotification(daysRemaining, planName)
         }
 
-        fun createSubscriptionExpired(context: Context, planName: String = "Premium") {
+        fun createSubscriptionExpired(context: PlatformContext, planName: String = "Premium") {
             getInstance(context).createSubscriptionExpiredNotification(planName)
         }
 
-        fun createLimitReached(context: Context, resourceType: String, maxAllowed: Int) {
+        fun createLimitReached(context: PlatformContext, resourceType: String, maxAllowed: Int) {
             getInstance(context).createLimitReachedNotification(resourceType, maxAllowed)
         }
 
-        fun createAppUpdate(context: Context, updateInfo: AppUpdateInfo) {
+        fun createAppUpdate(context: PlatformContext, updateInfo: AppUpdateInfo) {
             getInstance(context).createAppUpdateNotification(updateInfo)
         }
     }
@@ -67,16 +68,16 @@ class NotificationManager private constructor(
 
     /**
      * Crea una notifica generica
-     * MODIFICATO: Aggiunto controllo anti-duplicati
+     * MIGRATO: Log → platform logging
      */
     fun createNotification(type: NotificationType, data: Map<String, Any> = emptyMap()) {
         scope.launch {
             try {
-                Log.d(TAG, "🔔 Richiesta creazione notifica: $type")
+                logDebug(TAG, "🔔 Richiesta creazione notifica: $type")
 
                 // NUOVO: Controllo anti-duplicati
                 if (isDuplicateNotification(type, data)) {
-                    Log.d(TAG, "⚠️ Notifica duplicata ignorata: $type")
+                    logDebug(TAG, "⚠️ Notifica duplicata ignorata: $type")
                     return@launch
                 }
 
@@ -124,44 +125,37 @@ class NotificationManager private constructor(
 
                 notification?.let {
                     repository.saveNotification(it)
-                    Log.d(TAG, "✅ Notifica creata: ${it.title}")
-                } ?: Log.w(TAG, "❌ Impossibile creare notifica per tipo: $type")
+                    logDebug(TAG, "✅ Notifica creata: ${it.title}")
+                } ?: logDebug(TAG, "❌ Impossibile creare notifica per tipo: $type")
 
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Errore creazione notifica $type: ${e.message}", e)
+                logError(TAG, "❌ Errore creazione notifica $type: ${e.message}")
             }
         }
     }
 
-    // NUOVO: Controllo anti-duplicati
+    // MIGRATO: Controllo anti-duplicati
     /**
      * Verifica se esiste già una notifica identica recente
-     * CORREZIONE: Controlla notifiche recenti (lette o non lette) per evitare spam
+     * MIGRATO: Log → platform logging
      */
     private suspend fun isDuplicateNotification(type: NotificationType, data: Map<String, Any>): Boolean {
         return try {
-            // CORRETTO: Prende TUTTE le notifiche (non solo non lette)
             val allNotifications = repository.getAllNotifications().first()
 
-            // Calcola finestre temporali per controllo duplicati
             val now = System.currentTimeMillis()
-            val oneDayAgo = now - (24 * 60 * 60 * 1000) // 24 ore
-            val oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000) // 7 giorni
+            val oneDayAgo = now - (24 * 60 * 60 * 1000)
+            val oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000)
 
-            // Trova notifiche dello stesso tipo nelle finestre temporali appropriate
             val recentSameTypeNotifications = allNotifications.filter { notification ->
                 notification.type == type && when (type) {
-                    // Per subscription: controlla ultimi 7 giorni
                     NotificationType.SUBSCRIPTION_EXPIRY,
                     NotificationType.SUBSCRIPTION_EXPIRED -> notification.timestamp > oneWeekAgo
 
-                    // Per limit reached: controlla ultime 24 ore
                     NotificationType.LIMIT_REACHED -> notification.timestamp > oneDayAgo
 
-                    // Per app update: controlla ultime 24 ore
                     NotificationType.APP_UPDATE -> notification.timestamp > oneDayAgo
 
-                    // Altri tipi: solo se non letti (comportamento originale)
                     else -> !notification.isRead
                 }
             }
@@ -170,11 +164,9 @@ class NotificationManager private constructor(
                 return false
             }
 
-            // Controllo specifico per tipo
             when (type) {
                 NotificationType.LIMIT_REACHED -> {
                     val resourceType = data["resourceType"] as? String ?: "workouts"
-                    // Considera duplicato se stesso tipo + stesso resourceType nelle ultime 24h
                     recentSameTypeNotifications.any { notification ->
                         notification.actionData?.contains("resource:$resourceType") == true ||
                                 notification.message.contains(getResourceDisplayName(resourceType))
@@ -184,7 +176,6 @@ class NotificationManager private constructor(
                 NotificationType.SUBSCRIPTION_EXPIRY -> {
                     val planName = data["planName"] as? String ?: "Premium"
                     val daysRemaining = data["daysRemaining"] as? Int ?: 7
-                    // CORREZIONE: Considera duplicato se stessi giorni rimanenti negli ultimi 7 giorni
                     recentSameTypeNotifications.any { notification ->
                         notification.message.contains(planName) &&
                                 when (daysRemaining) {
@@ -197,7 +188,6 @@ class NotificationManager private constructor(
 
                 NotificationType.SUBSCRIPTION_EXPIRED -> {
                     val planName = data["planName"] as? String ?: "Premium"
-                    // Considera duplicato se stesso piano scaduto negli ultimi 7 giorni
                     recentSameTypeNotifications.any { notification ->
                         notification.message.contains(planName)
                     }
@@ -206,22 +196,20 @@ class NotificationManager private constructor(
                 NotificationType.APP_UPDATE -> {
                     val updateInfo = data["updateInfo"] as? AppUpdateInfo
                     updateInfo?.let { info ->
-                        // Considera duplicato se stessa versione nelle ultime 24h
                         recentSameTypeNotifications.any { notification ->
                             notification.message.contains(info.newVersion)
                         }
                     } ?: false
                 }
 
-                // Per altri tipi, considera duplicato se stesso tipo non letto
                 else -> {
                     recentSameTypeNotifications.any { !it.isRead }
                 }
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Errore controllo duplicati: ${e.message}", e)
-            false // In caso di errore, permetti la creazione
+            logError(TAG, "❌ Errore controllo duplicati: ${e.message}")
+            false
         }
     }
 
@@ -395,7 +383,7 @@ class NotificationManager private constructor(
 
     private fun buildAppUpdateNotification(updateInfo: AppUpdateInfo): Notification? {
         if (!updateInfo.hasUpdate()) {
-            Log.d(TAG, "🤷 Nessun aggiornamento disponibile")
+            logDebug(TAG, "🤷 Nessun aggiornamento disponibile")
             return null
         }
 
@@ -513,7 +501,7 @@ class NotificationManager private constructor(
         return try {
             actionMap.entries.joinToString(",") { "${it.key}:${it.value}" }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Errore building action data: ${e.message}")
+            logError(TAG, "❌ Errore building action data: ${e.message}")
             "action:$action,data:$data"
         }
     }
@@ -524,19 +512,19 @@ class NotificationManager private constructor(
     fun startPeriodicChecks() {
         scope.launch {
             try {
-                Log.d(TAG, "🔄 Avvio controlli periodici")
+                logDebug(TAG, "🔄 Avvio controlli periodici")
 
                 repository.checkAppUpdates().fold(
                     onSuccess = { updateInfo ->
                         updateInfo?.let { createAppUpdateNotification(it) }
                     },
                     onFailure = { error ->
-                        Log.e(TAG, "❌ Errore controllo aggiornamenti: ${error.message}")
+                        logError(TAG, "❌ Errore controllo aggiornamenti: ${error.message}")
                     }
                 )
 
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Errore controlli periodici: ${e.message}", e)
+                logError(TAG, "❌ Errore controlli periodici: ${e.message}")
             }
         }
     }
@@ -548,18 +536,19 @@ class NotificationManager private constructor(
         scope.launch {
             try {
                 repository.cleanupOldNotifications()
-                Log.d(TAG, "🧹 Cleanup completato")
+                logDebug(TAG, "🧹 Cleanup completato")
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Errore cleanup: ${e.message}", e)
+                logError(TAG, "❌ Errore cleanup: ${e.message}")
             }
         }
     }
 
     /**
      * Per debugging - crea notifiche di test
+     * MIGRATO: Log → platform logging
      */
     fun createTestNotifications() {
-        Log.d(TAG, "🧪 Creando notifiche di test...")
+        logDebug(TAG, "🧪 Creando notifiche di test...")
 
         // Test subscription
         createSubscriptionExpiryNotification(3, "Premium")
@@ -594,6 +583,6 @@ class NotificationManager private constructor(
         )
         createAppUpdateNotification(mockUpdate)
 
-        Log.d(TAG, "✅ Notifiche di test create")
+        logDebug(TAG, "✅ Notifiche di test create")
     }
 }
